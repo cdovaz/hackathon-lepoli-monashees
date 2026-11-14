@@ -1,0 +1,84 @@
+{
+  "project": "rivio-health-hub-full-stack-loop",
+  "loop_version": "2.0.0",
+  "updated_at": "2026-11-14T10:16:15-03:00",
+  "current_stage": "stage-5-verification-and-compression",
+  "stages": [
+    {
+      "id": "stage-0-learn-and-prompt",
+      "role": "Loop Engineering Architect Subagent",
+      "status": "completed",
+      "input": "Architecture docs, functionalities.md, institutional-access-flow.md, institutional-data-residency.md, codebase audit",
+      "output": "full-system-goal-prompt.md",
+      "memory_consulted": [
+        "CASE-001-dual-schema-hnsw-sync.md",
+        "CASE-002-institutional-episode-residency-and-billing.md",
+        "CASE-001-hardcoded-patient-and-local-only-state.md"
+      ]
+    },
+    {
+      "id": "stage-1-db-sync-and-apis",
+      "role": "Database & Backend Persistence Subagent",
+      "status": "completed",
+      "input": "supabase/migrations/20261114000000_unified_observability_and_sync.sql, web/scripts/sync-database.mjs",
+      "output": "Database synced: 5 patients, 23 biomarkers (384d HNSW), 39 PDFs in storage, 6 data_sources, doctor_access_sessions",
+      "memory_consulted": [
+        "CASE-001-dual-schema-hnsw-sync.md",
+        "CASE-002-institutional-episode-residency-and-billing.md"
+      ]
+    },
+    {
+      "id": "stage-2-mobile-supabase-integration",
+      "role": "Mobile Patient Vault Engineer Subagent",
+      "status": "completed",
+      "input": "mobile/src/store/useHealthStore.ts, mobile/src/lib/supabaseClinicalRepo.ts, mobile/src/screens/*",
+      "output": "Dynamic patient selection (5 patients), Supabase CRUD integration, live token generation, scope switches, realtime physiological simulator",
+      "memory_consulted": [
+        "CASE-001-dual-schema-hnsw-sync.md",
+        "CASE-001-hardcoded-patient-and-local-only-state.md"
+      ]
+    },
+    {
+      "id": "stage-3-web-cockpit-and-consent-loop",
+      "role": "Clinical Web & Consent Engineer Subagent",
+      "status": "completed",
+      "input": "web/src/lib/supabase-data.ts, web/src/lib/demo/api.ts, web/src/features/session/entry.tsx, web/src/features/sharing/invitation.tsx, web/src/features/workspace/workspace.tsx",
+      "output": "Multi-patient token listening, projectFixture zero-leak projection, Realtime access validation and revocation block",
+      "memory_consulted": [
+        "CASE-001-dual-schema-hnsw-sync.md",
+        "CASE-001-hardcoded-patient-and-local-only-state.md"
+      ]
+    },
+    {
+      "id": "stage-4-observability-and-espaco-medico-equipe",
+      "role": "Observability & Institutional Surface Subagent",
+      "status": "completed",
+      "input": "web/src/features/session/shell.tsx, web/src/features/team/team-space.tsx, web/src/lib/observability/engine.ts",
+      "output": "Dual-surface Shell switch (Médico vs. Equipe), TeamSpace with 4 interactive tabs, 15-min TTL hybrid residency and idempotent billing engine",
+      "memory_consulted": [
+        "CASE-002-institutional-episode-residency-and-billing.md",
+        "CASE-003-strict-surface-separation-and-zero-leak.md"
+      ]
+    },
+    {
+      "id": "stage-5-verification-and-compression",
+      "role": "QA & Loop Verification Gate Subagent",
+      "status": "completed",
+      "input": "web/tests/*, mobile tsconfig, supabase verification",
+      "output": "18 test files passed (255 tests passing, 0 failures), 0 typecheck errors in Web & Mobile, 0 lint errors",
+      "memory_consulted": [
+        "CASE-001-dual-schema-hnsw-sync.md",
+        "CASE-002-institutional-episode-residency-and-billing.md",
+        "CASE-001-hardcoded-patient-and-local-only-state.md",
+        "CASE-003-strict-surface-separation-and-zero-leak.md"
+      ]
+    }
+  ],
+  "metrics": {
+    "total_cycles": 1,
+    "positive_patterns_harvested": 3,
+    "negative_patterns_avoided": 1,
+    "test_coverage_pass_rate": 1.0,
+    "total_tests_passed": 255
+  }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,14 @@ import {
   CheckCircle2,
   Wind,
   Footprints,
+  Clock,
+  Flame,
 } from 'lucide-react-native';
 import { useHealthStore } from '../store/useHealthStore';
+import { theme, rivio } from '../theme/colors';
 import { Sparkline } from '../components/Sparkline';
 import { TachogramChart } from '../components/TachogramChart';
-import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Polyline, Circle, Line, Text as SvgText, Rect } from 'react-native-svg';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -34,16 +37,29 @@ interface WearablesScreenProps {
 
 export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTab }) => {
   const {
+    user,
     wearables,
+    heartRateSamples,
     activeAlerts,
     isSimulatedAnomalyActive,
     injectWearableAnomalyScenario,
     resetWearableScenario,
   } = useHealthStore();
 
-  const latest = wearables[wearables.length - 1];
+  const [selectedHrWindow, setSelectedHrWindow] = useState<'24h' | '48h' | '7d'>('24h');
 
-  // Gráfico simples SVG para série temporal de BPM
+  const latest = wearables[wearables.length - 1] || {
+    restingHeartRate: 68,
+    hrv: 48,
+    sleepHours: 7.2,
+    deepSleepHours: 1.6,
+    remSleepHours: 1.8,
+    steps: 6400,
+    spo2: 98,
+    date: 'Hoje',
+  };
+
+  // Gráfico da série diária de BPM
   const chartW = SCREEN_WIDTH - 64;
   const chartH = 120;
   const padL = 30;
@@ -53,15 +69,34 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
   const innerW = chartW - padL - padR;
   const innerH = chartH - padT - padB;
 
-  const bpmValues = wearables.map((w) => w.restingHeartRate);
-  const minBpm = Math.min(...bpmValues, 50);
-  const maxBpm = Math.max(...bpmValues, 120);
+  const displayWearables = wearables.slice(-30);
+  const bpmValues = displayWearables.map((w) => w.restingHeartRate);
+  const minBpm = Math.min(...bpmValues, 45);
+  const maxBpm = Math.max(...bpmValues, 125);
   const bpmRange = maxBpm - minBpm || 1;
 
-  const pointsStr = wearables
+  const pointsStr = displayWearables
     .map((w, idx) => {
-      const x = padL + (idx / (wearables.length - 1)) * innerW;
+      const x = padL + (idx / Math.max(displayWearables.length - 1, 1)) * innerW;
       const y = padT + innerH - ((w.restingHeartRate - minBpm) / bpmRange) * innerH;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  // Amostras de FC Horária (filtra conforme a janela selecionada)
+  const windowCount = selectedHrWindow === '24h' ? 24 : selectedHrWindow === '48h' ? 48 : 168;
+  const recentHourlySamples = heartRateSamples.slice(-windowCount);
+
+  // Mini gráfico para FC Horária
+  const hourlyBpmValues = recentHourlySamples.map((s) => s.bpm);
+  const minHourlyBpm = hourlyBpmValues.length > 0 ? Math.min(...hourlyBpmValues, 50) : 50;
+  const maxHourlyBpm = hourlyBpmValues.length > 0 ? Math.max(...hourlyBpmValues, 120) : 120;
+  const hourlyRange = maxHourlyBpm - minHourlyBpm || 1;
+
+  const hourlyPointsStr = recentHourlySamples
+    .map((s, idx) => {
+      const x = padL + (idx / Math.max(recentHourlySamples.length - 1, 1)) * innerW;
+      const y = padT + innerH - ((s.bpm - minHourlyBpm) / hourlyRange) * innerH;
       return `${x},${y}`;
     })
     .join(' ');
@@ -72,10 +107,10 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
   const sparkSleep = wearables.slice(-14).map((w) => w.sleepHours);
   const sparkSteps = wearables.slice(-14).map((w) => w.steps);
 
-  // Decomposição dos estágios de sono (Apple Health / Oura style)
-  const totalSleep = latest?.sleepHours || 7.2;
-  const deepSleep = latest?.deepSleepHours || (isSimulatedAnomalyActive ? 0.3 : 1.8);
-  const remSleep = latest?.remSleepHours || (isSimulatedAnomalyActive ? 0.8 : 1.7);
+  // Decomposição dos estágios de sono
+  const totalSleep = latest.sleepHours || 7.2;
+  const deepSleep = latest.deepSleepHours || (isSimulatedAnomalyActive ? 0.3 : 1.6);
+  const remSleep = latest.remSleepHours || (isSimulatedAnomalyActive ? 0.8 : 1.7);
   const lightSleep = Math.max(0.5, Number((totalSleep - deepSleep - remSleep).toFixed(1)));
   const deepPct = Math.round((deepSleep / totalSleep) * 100);
   const remPct = Math.round((remSleep / totalSleep) * 100);
@@ -87,83 +122,40 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
       <View style={styles.header}>
         <Text style={styles.title}>Sinais Contínuos & Wearables</Text>
         <Text style={styles.subtitle}>
-          Monitoramento fisiológico contínuo sincronizado com o Apple Watch e anéis inteligentes.
+          Streaming contínuo via Apple Watch • Prontuário de {user.name} ({wearables.length} dias registrados)
         </Text>
       </View>
 
       {/* Status do Dispositivo Pareado */}
       <View style={styles.deviceStatusCard}>
         <View style={styles.deviceIconBox}>
-          <Watch color="#0D9488" size={24} />
+          <Watch color={rivio.brand[600]} size={22} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.deviceName}>Apple Watch Ultra 2</Text>
-          <Text style={styles.deviceSub}>HealthKit Streaming • BLE GATT 0x180D • Há 2 min</Text>
+          <Text style={styles.deviceSub}>HealthKit Telemetria • Bluetooth BLE • Ao vivo</Text>
         </View>
         <View style={styles.deviceConnectedBadge}>
           <View style={styles.connectedDot} />
-          <Text style={styles.connectedText}>Ao Vivo</Text>
+          <Text style={styles.connectedText}>Sincronizado</Text>
         </View>
       </View>
 
-      {/* Caixa de Controle do Simulador Determinístico (RF-P03) */}
-      <View style={styles.simulatorBox}>
-        <View style={styles.simulatorHeader}>
-          <Zap color="#E11D48" size={16} />
-          <Text style={styles.simulatorTitle}>Controlador do Simulador de Palco</Text>
-        </View>
-        <Text style={styles.simulatorDesc}>
-          Simule eventos fisiológicos agudos de arritmia e taquicardia noturna em tempo real para a banca.
-        </Text>
-
-        <View style={styles.simulatorActions}>
-          <TouchableOpacity
-            style={[
-              styles.simButtonTrigger,
-              isSimulatedAnomalyActive && styles.simButtonActive,
-            ]}
-            onPress={injectWearableAnomalyScenario}
-          >
-            <ShieldAlert color="#FFFFFF" size={16} />
-            <Text style={styles.simButtonTriggerText}>
-              {isSimulatedAnomalyActive
-                ? '⚡ Anomalia Ativa (114 BPM)'
-                : 'Disparar Taquicardia Noturna'}
-            </Text>
-          </TouchableOpacity>
-
-          {isSimulatedAnomalyActive && (
-            <TouchableOpacity
-              style={styles.simButtonReset}
-              onPress={resetWearableScenario}
-            >
-              <RotateCcw color="#475569" size={14} />
-              <Text style={styles.simButtonResetText}>Restaurar Normal</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Card de Alerta Proativo com Tacograma Noturno (RF-P04 / ETAPA 4) */}
-      {activeAlerts.length > 0 ? (
+      {/* Alerta Clínico Detectado (se houver) */}
+      {activeAlerts.length > 0 && (
         <View style={styles.alertCard}>
           <View style={styles.alertHeader}>
-            <AlertTriangle color="#E11D48" size={20} />
+            <AlertTriangle color={rivio.clinical.danger.fg} size={18} />
             <Text style={styles.alertTitle}>Alerta Clínico Detectado</Text>
           </View>
-          <Text style={styles.alertMainText}>{activeAlerts[0].title}</Text>
-          <Text style={styles.alertSubText}>{activeAlerts[0].description}</Text>
+          <Text style={styles.alertMainText}>{activeAlerts[0].message}</Text>
+          {activeAlerts[0].context ? (
+            <Text style={styles.alertSubText}>{activeAlerts[0].context}</Text>
+          ) : null}
 
-          {/* Gráfico do Tacograma do Disparo Noturno às 03:15 */}
+          {/* Gráfico de Tacograma Noturno */}
           <Text style={styles.tacogramHeader}>Registro do Tacograma Noturno (00:00 - 06:30):</Text>
           <TachogramChart width={SCREEN_WIDTH - 64} height={100} />
-
-          <View style={styles.contextBox}>
-            <Text style={styles.contextTitle}>Contexto do Grafo Clínico:</Text>
-            <Text style={styles.contextContent}>
-              {activeAlerts[0].clinicalContext}
-            </Text>
-          </View>
 
           <View style={styles.alertButtons}>
             <TouchableOpacity
@@ -181,33 +173,112 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
-        <View style={styles.normalCard}>
-          <CheckCircle2 color="#10B981" size={20} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={styles.normalTitle}>Ritmo Cardíaco & Sono Estáveis</Text>
-            <Text style={styles.normalSub}>
-              Sem indícios de fibrilação atrial, apneia ou taquicardia nos últimos 30 dias.
-            </Text>
-          </View>
-        </View>
       )}
 
-      {/* Gráfico da Série Temporal de FC (30 dias) */}
+      {/* 1. SEÇÃO: Frequência Cardíaca Horária (Apple Watch Samples) */}
+      <View style={styles.chartContainer}>
+        <View style={styles.chartHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Clock color={rivio.series.hr} size={18} />
+            <Text style={styles.chartTitle}>FC Horária Contínua</Text>
+          </View>
+          <View style={styles.windowToggleRow}>
+            {(['24h', '48h', '7d'] as const).map((w) => (
+              <TouchableOpacity
+                key={w}
+                style={[styles.windowChip, selectedHrWindow === w && styles.windowChipActive]}
+                onPress={() => setSelectedHrWindow(w)}
+              >
+                <Text
+                  style={[
+                    styles.windowChipText,
+                    selectedHrWindow === w && styles.windowChipTextActive,
+                  ]}
+                >
+                  {w}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {recentHourlySamples.length > 0 ? (
+          <>
+            <Svg width={chartW} height={chartH}>
+              {/* Faixa limite de taquicardia (>100 bpm) */}
+              <Line
+                x1={padL}
+                y1={padT + innerH - ((100 - minHourlyBpm) / hourlyRange) * innerH}
+                x2={padL + innerW}
+                y2={padT + innerH - ((100 - minHourlyBpm) / hourlyRange) * innerH}
+                stroke={rivio.clinical.danger.border}
+                strokeDasharray="4,4"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={padL - 4}
+                y={padT + innerH - ((100 - minHourlyBpm) / hourlyRange) * innerH + 3}
+                fill={rivio.clinical.danger.fg}
+                fontSize={9}
+                fontWeight="700"
+                textAnchor="end"
+              >
+                100
+              </SvgText>
+
+              {/* Curva de Amostras Horárias */}
+              <Polyline
+                points={hourlyPointsStr}
+                fill="none"
+                stroke={rivio.series.hr}
+                strokeWidth={2}
+              />
+
+              {/* Última amostra */}
+              <Circle
+                cx={padL + innerW}
+                cy={
+                  padT +
+                  innerH -
+                  ((recentHourlySamples[recentHourlySamples.length - 1].bpm - minHourlyBpm) /
+                    hourlyRange) *
+                    innerH
+                }
+                r={4}
+                fill={rivio.series.hr}
+                stroke="#FFFFFF"
+                strokeWidth={1.5}
+              />
+            </Svg>
+
+            <View style={styles.chartFooter}>
+              <Text style={styles.chartFooterText}>
+                {recentHourlySamples[0].ts.split('T')[1]?.slice(0, 5) || 'Início'}
+              </Text>
+              <Text style={styles.chartFooterText}>
+                {recentHourlySamples.length} amostras • Última:{' '}
+                {recentHourlySamples[recentHourlySamples.length - 1].bpm} bpm
+              </Text>
+              <Text style={styles.chartFooterText}>Agora</Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.emptySamplesBox}>
+            <Text style={styles.emptySamplesText}>
+              Amostras horárias sincronizadas a partir dos registros de telemetria do Supabase.
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* 2. SEÇÃO: Série Temporal de FC de Repouso Diária (30 dias) */}
       <View style={styles.chartContainer}>
         <View style={styles.chartHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Heart color="#E11D48" size={18} />
-            <Text style={styles.chartTitle}>Frequência Cardíaca em Repouso (30 dias)</Text>
+            <Heart color={rivio.series.hr} size={18} />
+            <Text style={styles.chartTitle}>FC de Repouso Diária ({displayWearables.length}d)</Text>
           </View>
-          <Text
-            style={[
-              styles.chartCurrentBpm,
-              isSimulatedAnomalyActive && styles.chartCurrentBpmAlert,
-            ]}
-          >
-            {latest?.restingHeartRate} BPM
-          </Text>
+          <Text style={styles.chartCurrentBpm}>{latest.restingHeartRate} BPM</Text>
         </View>
 
         <Svg width={chartW} height={chartH}>
@@ -224,7 +295,7 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
           <SvgText
             x={padL - 4}
             y={padT + innerH - ((100 - minBpm) / bpmRange) * innerH + 3}
-            fill="#E11D48"
+            fill={rivio.clinical.danger.fg}
             fontSize={9}
             fontWeight="700"
             textAnchor="end"
@@ -232,19 +303,19 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
             100
           </SvgText>
 
-          {/* Curva da Série Temporal */}
+          {/* Curva da Série Temporal Diária */}
           <Polyline
             points={pointsStr}
             fill="none"
-            stroke={isSimulatedAnomalyActive ? '#E11D48' : '#EF4444'}
+            stroke={rivio.series.hr}
             strokeWidth={2.5}
           />
 
           <Circle
             cx={padL + innerW}
             cy={padT + innerH - ((latest.restingHeartRate - minBpm) / bpmRange) * innerH}
-            r={isSimulatedAnomalyActive ? 6 : 4}
-            fill={isSimulatedAnomalyActive ? '#E11D48' : '#EF4444'}
+            r={5}
+            fill={rivio.series.hr}
             stroke="#FFFFFF"
             strokeWidth={2}
           />
@@ -252,76 +323,88 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
 
         <View style={styles.chartFooter}>
           <Text style={styles.chartFooterText}>30 dias atrás</Text>
-          <Text style={styles.chartFooterText}>Hoje</Text>
+          <Text style={styles.chartFooterText}>Hoje ({latest.restingHeartRate} bpm)</Text>
         </View>
       </View>
 
-      {/* Decomposição dos Estágios de Sono (ETAPA 4) */}
+      {/* 3. Grid de Métricas Vitais com Sparklines */}
+      <View style={styles.metricsGrid}>
+        {/* Card FC */}
+        <View style={styles.metricCard}>
+          <View style={styles.metricCardHeader}>
+            <Heart color={rivio.series.hr} size={16} />
+            <Text style={styles.metricCardTitle}>FC Repouso</Text>
+          </View>
+          <Text style={styles.metricValue}>
+            {latest.restingHeartRate} <Text style={styles.metricUnit}>bpm</Text>
+          </Text>
+          <Sparkline data={sparkBpm} color={rivio.series.hr} width={90} height={24} />
+        </View>
+
+        {/* Card HRV */}
+        <View style={styles.metricCard}>
+          <View style={styles.metricCardHeader}>
+            <Activity color={rivio.series.hrv} size={16} />
+            <Text style={styles.metricCardTitle}>HRV (VFC)</Text>
+          </View>
+          <Text style={styles.metricValue}>
+            {latest.hrv} <Text style={styles.metricUnit}>ms</Text>
+          </Text>
+          <Sparkline data={sparkHrv} color={rivio.series.hrv} width={90} height={24} />
+        </View>
+
+        {/* Card Sono */}
+        <View style={styles.metricCard}>
+          <View style={styles.metricCardHeader}>
+            <Moon color={rivio.series.sleep} size={16} />
+            <Text style={styles.metricCardTitle}>Sono Total</Text>
+          </View>
+          <Text style={styles.metricValue}>
+            {latest.sleepHours} <Text style={styles.metricUnit}>h</Text>
+          </Text>
+          <Sparkline data={sparkSleep} color={rivio.series.sleep} width={90} height={24} />
+        </View>
+
+        {/* Card Passos / Atividade */}
+        <View style={styles.metricCard}>
+          <View style={styles.metricCardHeader}>
+            <Footprints color={rivio.series.activity} size={16} />
+            <Text style={styles.metricCardTitle}>Passos</Text>
+          </View>
+          <Text style={styles.metricValue}>
+            {latest.steps?.toLocaleString('pt-BR') || '6.400'}{' '}
+            <Text style={styles.metricUnit}>passos</Text>
+          </Text>
+          <Sparkline data={sparkSteps} color={rivio.series.activity} width={90} height={24} />
+        </View>
+      </View>
+
+      {/* 4. Decomposição dos Estágios de Sono */}
       <View style={styles.sleepStageCard}>
         <View style={styles.sleepHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Moon color="#8B5CF6" size={18} />
-            <Text style={styles.sleepTitle}>Arquitetura e Estágios do Sono</Text>
-          </View>
-          <Text style={styles.sleepTotalText}>{totalSleep}h total</Text>
+          <Moon color={rivio.series.sleep} size={18} />
+          <Text style={styles.sleepTitle}>Arquitetura do Sono (Última Noite)</Text>
         </View>
 
-        {/* Barra Segmentada de Sono */}
-        <View style={styles.sleepBarContainer}>
-          <View style={[styles.sleepSegment, { width: `${deepPct}%`, backgroundColor: '#4C1D95' }]} />
-          <View style={[styles.sleepSegment, { width: `${remPct}%`, backgroundColor: '#8B5CF6' }]} />
-          <View style={[styles.sleepSegment, { width: `${lightPct}%`, backgroundColor: '#DDD6FE' }]} />
+        <View style={styles.sleepBarWrap}>
+          <View style={[styles.sleepSegment, { width: `${deepPct}%`, backgroundColor: '#312E81' }]} />
+          <View style={[styles.sleepSegment, { width: `${remPct}%`, backgroundColor: '#4338CA' }]} />
+          <View style={[styles.sleepSegment, { width: `${lightPct}%`, backgroundColor: '#818CF8' }]} />
         </View>
 
-        {/* Legenda dos Estágios */}
         <View style={styles.sleepLegendRow}>
           <View style={styles.sleepLegendItem}>
-            <View style={[styles.sleepDot, { backgroundColor: '#4C1D95' }]} />
-            <Text style={styles.sleepLegendText}>Profundo: {deepSleep}h ({deepPct}%)</Text>
+            <View style={[styles.legendDot, { backgroundColor: '#312E81' }]} />
+            <Text style={styles.legendText}>Profundo: {deepSleep}h ({deepPct}%)</Text>
           </View>
           <View style={styles.sleepLegendItem}>
-            <View style={[styles.sleepDot, { backgroundColor: '#8B5CF6' }]} />
-            <Text style={styles.sleepLegendText}>REM: {remSleep}h ({remPct}%)</Text>
+            <View style={[styles.legendDot, { backgroundColor: '#4338CA' }]} />
+            <Text style={styles.legendText}>REM: {remSleep}h ({remPct}%)</Text>
           </View>
           <View style={styles.sleepLegendItem}>
-            <View style={[styles.sleepDot, { backgroundColor: '#DDD6FE' }]} />
-            <Text style={styles.sleepLegendText}>Leve: {lightSleep}h</Text>
+            <View style={[styles.legendDot, { backgroundColor: '#818CF8' }]} />
+            <Text style={styles.legendText}>Leve: {lightSleep}h ({lightPct}%)</Text>
           </View>
-        </View>
-      </View>
-
-      {/* Grid de Métricas com Micro-Sparklines */}
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Activity color="#3B82F6" size={16} />
-            <Text style={styles.metricLabel}>Variabilidade (HRV)</Text>
-          </View>
-          <View style={styles.metricRowWithSpark}>
-            <Text style={styles.metricVal}>
-              {latest?.hrv} <Text style={styles.metricUnit}>ms</Text>
-            </Text>
-            <Sparkline data={sparkHrv} color="#3B82F6" width={60} height={24} />
-          </View>
-          <Text style={styles.metricNote}>
-            {isSimulatedAnomalyActive
-              ? 'Queda drástica de recuperação'
-              : 'Faixa saudável para 32 anos'}
-          </Text>
-        </View>
-
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Wind color="#0D9488" size={16} />
-            <Text style={styles.metricLabel}>Oxigenação (SpO2)</Text>
-          </View>
-          <View style={styles.metricRowWithSpark}>
-            <Text style={styles.metricVal}>
-              {latest?.spo2}%
-            </Text>
-            <Sparkline data={[98, 97, 98, 98, 99, 98, 98]} color="#0D9488" width={60} height={24} />
-          </View>
-          <Text style={styles.metricNote}>Saturação ideal contínua</Text>
         </View>
       </View>
     </ScrollView>
@@ -331,261 +414,155 @@ export const WearablesScreen: React.FC<WearablesScreenProps> = ({ onNavigateToTa
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: rivio.surface.base,
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
   header: {
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800',
+    color: rivio.ink[900],
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-    lineHeight: 17,
+    color: rivio.ink[600],
+    marginTop: 2,
+    lineHeight: 16,
   },
   deviceStatusCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
+    borderColor: rivio.surface.line,
+    padding: 12,
+    marginBottom: 14,
     gap: 12,
   },
   deviceIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F0FDFA',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: rivio.brand[50],
+    borderWidth: 1,
+    borderColor: rivio.brand[200],
     justifyContent: 'center',
     alignItems: 'center',
   },
   deviceName: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: rivio.ink[900],
   },
   deviceSub: {
     fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
+    color: rivio.ink[400],
+    marginTop: 1,
   },
   deviceConnectedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: rivio.brand[50],
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: rivio.radius.pill,
   },
   connectedDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#16A34A',
+    backgroundColor: rivio.brand[500],
   },
   connectedText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  simulatorBox: {
-    backgroundColor: '#FFF1F2',
-    borderWidth: 1.5,
-    borderColor: '#FECDD3',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-  },
-  simulatorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  simulatorTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#BE123C',
-    textTransform: 'uppercase',
-  },
-  simulatorDesc: {
-    fontSize: 11,
-    color: '#881337',
-    lineHeight: 16,
-    marginBottom: 12,
-  },
-  simulatorActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  simButtonTrigger: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E11D48',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 6,
-  },
-  simButtonActive: {
-    backgroundColor: '#9F1239',
-  },
-  simButtonTriggerText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  simButtonReset: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 6,
-  },
-  simButtonResetText: {
-    color: '#334155',
+    fontSize: 10,
     fontWeight: '700',
-    fontSize: 12,
+    color: rivio.brand[700],
   },
   alertCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E11D48',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: rivio.clinical.danger.bg,
+    borderWidth: 1,
+    borderColor: rivio.clinical.danger.border,
+    borderRadius: rivio.radius.md,
+    padding: 14,
     marginBottom: 16,
-    shadowColor: '#E11D48',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
   },
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 6,
   },
   alertTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#BE123C',
-    textTransform: 'uppercase',
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.clinical.danger.fg,
   },
   alertMainText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.ink[900],
     marginBottom: 4,
   },
   alertSubText: {
-    fontSize: 12,
-    color: '#475569',
-    lineHeight: 16,
-    marginBottom: 8,
+    fontSize: 11,
+    color: rivio.ink[600],
+    lineHeight: 15,
   },
   tacogramHeader: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#881337',
-    marginTop: 6,
-  },
-  contextBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  contextTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 2,
-  },
-  contextContent: {
-    fontSize: 11,
-    color: '#475569',
-    lineHeight: 15,
+    fontWeight: '600',
+    color: rivio.ink[600],
+    marginTop: 10,
+    marginBottom: 6,
   },
   alertButtons: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 12,
   },
   actionChatButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D9488',
-    paddingVertical: 11,
-    borderRadius: 11,
     gap: 6,
+    backgroundColor: rivio.brand[600],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: rivio.radius.sm,
   },
   actionChatButtonText: {
     color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
-    fontSize: 12,
   },
   actionShareButton: {
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 11,
+    backgroundColor: rivio.surface.card,
+    borderWidth: 1,
+    borderColor: rivio.surface.line,
     paddingHorizontal: 12,
-    borderRadius: 11,
+    paddingVertical: 8,
+    borderRadius: rivio.radius.sm,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   actionShareButtonText: {
-    color: '#334155',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  normalCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-  },
-  normalTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#166534',
-  },
-  normalSub: {
+    color: rivio.ink[900],
     fontSize: 11,
-    color: '#15803D',
-    marginTop: 2,
+    fontWeight: '600',
   },
   chartContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
+    borderColor: rivio.surface.line,
+    padding: 14,
+    marginBottom: 14,
   },
   chartHeader: {
     flexDirection: 'row',
@@ -594,53 +571,116 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   chartTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#1E293B',
+    color: rivio.ink[900],
   },
   chartCurrentBpm: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '800',
+    color: rivio.series.hr,
   },
-  chartCurrentBpmAlert: {
-    color: '#E11D48',
-    fontSize: 18,
+  windowToggleRow: {
+    flexDirection: 'row',
+    backgroundColor: rivio.surface.subtle,
+    borderRadius: rivio.radius.sm,
+    padding: 2,
+    gap: 2,
+  },
+  windowChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: rivio.radius.sm - 2,
+  },
+  windowChipActive: {
+    backgroundColor: rivio.surface.card,
+  },
+  windowChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: rivio.ink[400],
+  },
+  windowChipTextActive: {
+    color: rivio.brand[700],
+    fontWeight: '700',
   },
   chartFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6,
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: rivio.surface.subtle,
   },
   chartFooterText: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: rivio.ink[400],
+  },
+  emptySamplesBox: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptySamplesText: {
+    fontSize: 11,
+    color: rivio.ink[400],
+    textAlign: 'center',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  metricCard: {
+    width: (SCREEN_WIDTH - 40) / 2,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
+    borderWidth: 1,
+    borderColor: rivio.surface.line,
+    padding: 12,
+  },
+  metricCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  metricCardTitle: {
+    fontSize: 11,
+    color: rivio.ink[600],
+    fontWeight: '600',
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: rivio.ink[900],
+    marginBottom: 6,
+  },
+  metricUnit: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: rivio.ink[400],
   },
   sleepStageCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
+    borderColor: rivio.surface.line,
+    padding: 14,
   },
   sleepHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 12,
   },
   sleepTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: rivio.ink[900],
   },
-  sleepTotalText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#8B5CF6',
-  },
-  sleepBarContainer: {
+  sleepBarWrap: {
     flexDirection: 'row',
     height: 14,
     borderRadius: 7,
@@ -653,64 +693,22 @@ const styles = StyleSheet.create({
   sleepLegendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   sleepLegendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  sleepDot: {
+  legendDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  sleepLegendText: {
+  legendText: {
     fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  metricLabel: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '700',
-  },
-  metricRowWithSpark: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  metricVal: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  metricUnit: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  metricNote: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 4,
-    lineHeight: 14,
+    color: rivio.ink[600],
+    fontWeight: '500',
   },
 });

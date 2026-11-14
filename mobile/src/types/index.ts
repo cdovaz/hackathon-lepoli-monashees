@@ -1,17 +1,32 @@
+export type BiomarkerCategory =
+  | 'Glicêmico'
+  | 'Lipídico'
+  | 'Hematológico'
+  | 'Hormonal'
+  | 'Renal'
+  | 'Inflamatório'
+  | 'Hepático'
+  | 'Nutricional';
+
 export type BiologicalSex = 'Masculino' | 'Feminino';
 
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  cpf?: string;
   age: number;
   biologicalSex: BiologicalSex;
-  chronicConditions?: string[];
-  activeMedications?: string[];
+  birthDate?: string;
+  city?: string;
+  heightCm?: number;
+  weightKg?: number;
+  bloodType?: string;
+  scenario?: string;
+  chronicConditions: string[];
+  activeMedications: string[];
   avatarUrl?: string;
 }
-
-export type BiomarkerCategory = 'Glicêmico' | 'Lipídico' | 'Hormonal' | 'Hematológico' | 'Inflamatório';
 
 export interface BiomarkerDefinition {
   id: string;
@@ -52,26 +67,32 @@ export interface UploadedDocument {
 export interface WearableDailyReading {
   date: string; // YYYY-MM-DD
   restingHeartRate: number; // BPM
-  maxHeartRate: number;
-  minHeartRate: number;
+  maxHeartRate?: number;
+  minHeartRate?: number;
   hrv: number; // ms (Heart Rate Variability)
   sleepHours: number;
   deepSleepHours: number;
-  remSleepHours: number;
-  spo2: number; // %
+  remSleepHours?: number;
+  spo2?: number; // %
   steps: number;
+  readinessScore?: number;
+  hasAnomaly?: boolean;
+  anomalyDescription?: string;
 }
 
 export interface AnomalyAlert {
   id: string;
   timestamp: string;
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  metricType: 'heart_rate' | 'hrv' | 'sleep' | 'spo2';
-  valueDetected: string;
-  baselineValue: string;
-  clinicalContext: string;
+  title?: string;
+  message?: string;
+  description?: string;
+  context?: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  metricType?: 'heart_rate' | 'hrv' | 'sleep' | 'spo2' | string;
+  type?: string;
+  valueDetected?: string;
+  baselineValue?: string;
+  clinicalContext?: string;
   resolved: boolean;
 }
 
@@ -84,7 +105,7 @@ export interface ChatMessage {
     title: string;
     date: string;
     value?: string;
-    sourceType: 'lab_exam' | 'wearable' | 'prescription';
+    sourceType: 'lab_exam' | 'wearable' | 'prescription' | 'clinical_graph';
   }>;
 }
 
@@ -96,4 +117,36 @@ export interface DoctorAccessSession {
   accessUrl: string;
   active: boolean;
   scope: string[];
+}
+
+export interface HeartRateSample {
+  id?: string;
+  patientId?: string;
+  ts: string; // ISO timestamp
+  bpm: number;
+  activityContext?: 'resting' | 'walking' | 'sleeping' | 'workout' | 'fever';
+}
+
+export interface Medication {
+  id: string;
+  patientId: string;
+  name: string;
+  dosage: string;
+  route?: string;
+  frequency?: string;
+  startDate: string;
+  endDate?: string | null;
+  indication?: string;
+  prescribedBy?: string;
+}
+
+export interface ClinicalEvent {
+  id: string;
+  patientId: string;
+  date: string;
+  title: string;
+  eventType: string;
+  description?: string;
+  severity?: string;
+  facility?: string;
 }

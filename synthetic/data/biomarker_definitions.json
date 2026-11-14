@@ -1,0 +1,209 @@
+[
+  {
+    "id": "glicose",
+    "canonicalName": "Glicemia de Jejum",
+    "category": "Glicêmico",
+    "unit": "mg/dL",
+    "refMin": 70,
+    "refMax": 99,
+    "description": "Nível de glicose plasmática em jejum de 8 a 12 horas."
+  },
+  {
+    "id": "glicemia_capilar",
+    "canonicalName": "Glicemia Capilar (jejum)",
+    "category": "Glicêmico",
+    "unit": "mg/dL",
+    "refMin": 70,
+    "refMax": 99,
+    "description": "Automonitoramento domiciliar em jejum com glicosímetro."
+  },
+  {
+    "id": "hba1c",
+    "canonicalName": "Hemoglobina Glicada (HbA1c)",
+    "category": "Glicêmico",
+    "unit": "%",
+    "refMin": 4,
+    "refMax": 5.6,
+    "description": "Média ponderada da glicemia nos últimos 90 a 120 dias."
+  },
+  {
+    "id": "ldl",
+    "canonicalName": "Colesterol LDL (Fração Ruim)",
+    "category": "Lipídico",
+    "unit": "mg/dL",
+    "refMin": 0,
+    "refMax": 130,
+    "description": "Lipoproteína de baixa densidade associada ao risco aterosclerótico."
+  },
+  {
+    "id": "hdl",
+    "canonicalName": "Colesterol HDL (Fração Boa)",
+    "category": "Lipídico",
+    "unit": "mg/dL",
+    "refMin": 40,
+    "refMax": 80,
+    "description": "Lipoproteína protetora cardiovascular."
+  },
+  {
+    "id": "triglicerides",
+    "canonicalName": "Triglicérides",
+    "category": "Lipídico",
+    "unit": "mg/dL",
+    "refMin": 0,
+    "refMax": 150,
+    "description": "Gorduras de reserva energética e risco metabólico."
+  },
+  {
+    "id": "ferritina",
+    "canonicalName": "Ferritina Sérica",
+    "category": "Hematológico",
+    "unit": "ng/mL",
+    "refMin": 30,
+    "refMax": 400,
+    "description": "Principal proteína de reserva de ferro; também reagente de fase aguda."
+  },
+  {
+    "id": "tsh",
+    "canonicalName": "TSH Ultra Sensível",
+    "category": "Hormonal",
+    "unit": "mUI/L",
+    "refMin": 0.4,
+    "refMax": 4,
+    "description": "Hormônio tireoestimulante regulador da função da tireoide."
+  },
+  {
+    "id": "creatinina",
+    "canonicalName": "Creatinina Sérica",
+    "category": "Renal",
+    "unit": "mg/dL",
+    "refMin": 0.7,
+    "refMax": 1.3,
+    "description": "Marcador de filtração glomerular / função renal."
+  },
+  {
+    "id": "microalbuminuria",
+    "canonicalName": "Microalbuminúria",
+    "category": "Renal",
+    "unit": "mg/g",
+    "refMin": 0,
+    "refMax": 30,
+    "description": "Albumina urinária; marcador precoce de nefropatia diabética."
+  },
+  {
+    "id": "hemoglobina",
+    "canonicalName": "Hemoglobina",
+    "category": "Hematológico",
+    "unit": "g/dL",
+    "refMin": 13.5,
+    "refMax": 17.5,
+    "description": "Proteína transportadora de oxigênio nas hemácias."
+  },
+  {
+    "id": "leucocitos",
+    "canonicalName": "Leucócitos Totais",
+    "category": "Hematológico",
+    "unit": "/µL",
+    "refMin": 4000,
+    "refMax": 10000,
+    "description": "Contagem total de glóbulos brancos."
+  },
+  {
+    "id": "linfocitos",
+    "canonicalName": "Linfócitos",
+    "category": "Hematológico",
+    "unit": "/µL",
+    "refMin": 1000,
+    "refMax": 4800,
+    "description": "Contagem absoluta de linfócitos."
+  },
+  {
+    "id": "plaquetas",
+    "canonicalName": "Plaquetas",
+    "category": "Hematológico",
+    "unit": "mil/µL",
+    "refMin": 150,
+    "refMax": 450,
+    "description": "Contagem de plaquetas."
+  },
+  {
+    "id": "pcr",
+    "canonicalName": "Proteína C Reativa (PCR)",
+    "category": "Inflamatório",
+    "unit": "mg/L",
+    "refMin": 0,
+    "refMax": 5,
+    "description": "Marcador inflamatório de fase aguda."
+  },
+  {
+    "id": "vhs",
+    "canonicalName": "VHS",
+    "category": "Inflamatório",
+    "unit": "mm/h",
+    "refMin": 0,
+    "refMax": 20,
+    "description": "Velocidade de hemossedimentação."
+  },
+  {
+    "id": "ldh",
+    "canonicalName": "Desidrogenase Lática (LDH)",
+    "category": "Inflamatório",
+    "unit": "U/L",
+    "refMin": 120,
+    "refMax": 250,
+    "description": "Enzima de lesão tecidual / hemólise."
+  },
+  {
+    "id": "ck",
+    "canonicalName": "Creatinoquinase (CK)",
+    "category": "Inflamatório",
+    "unit": "U/L",
+    "refMin": 30,
+    "refMax": 200,
+    "description": "Enzima muscular; eleva-se em mialgia/rabdomiólise."
+  },
+  {
+    "id": "ast",
+    "canonicalName": "AST (TGO)",
+    "category": "Hepático",
+    "unit": "U/L",
+    "refMin": 0,
+    "refMax": 40,
+    "description": "Transaminase oxalacética."
+  },
+  {
+    "id": "alt",
+    "canonicalName": "ALT (TGP)",
+    "category": "Hepático",
+    "unit": "U/L",
+    "refMin": 0,
+    "refMax": 41,
+    "description": "Transaminase pirúvica."
+  },
+  {
+    "id": "albumina",
+    "canonicalName": "Albumina",
+    "category": "Hepático",
+    "unit": "g/dL",
+    "refMin": 3.5,
+    "refMax": 5.2,
+    "description": "Principal proteína plasmática."
+  },
+  {
+    "id": "globulinas",
+    "canonicalName": "Globulinas",
+    "category": "Hepático",
+    "unit": "g/dL",
+    "refMin": 2,
+    "refMax": 3.5,
+    "description": "Fração globulínica das proteínas séricas."
+  },
+  {
+    "id": "vitd",
+    "canonicalName": "Vitamina D (25-OH)",
+    "category": "Nutricional",
+    "unit": "ng/mL",
+    "refMin": 30,
+    "refMax": 100,
+    "description": "Reserva de vitamina D."
+  }
+]

@@ -26,6 +26,7 @@ import {
   ArrowRight,
 } from 'lucide-react-native';
 import { useHealthStore } from '../store/useHealthStore';
+import { theme, rivio } from '../theme/colors';
 
 export const AssistantChatScreen: React.FC = () => {
   const { chatMessages, sendChatMessage, isSimulatedAnomalyActive } = useHealthStore();
@@ -96,7 +97,7 @@ export const AssistantChatScreen: React.FC = () => {
       {/* Cabeçalho */}
       <View style={styles.header}>
         <View style={styles.botAvatar}>
-          <Bot color="#0D9488" size={22} />
+          <Bot color={theme.colors.primary} size={22} />
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -140,7 +141,7 @@ export const AssistantChatScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.disclaimerBox}>
-          <ShieldCheck color="#0D9488" size={16} />
+          <ShieldCheck color={theme.colors.primary} size={16} />
           <Text style={styles.disclaimerText}>
             Contexto ativado: o assistente correlaciona seus laudos laboratoriais, medicamentos em uso e leituras em repouso dos wearables.
           </Text>
@@ -158,7 +159,7 @@ export const AssistantChatScreen: React.FC = () => {
             >
               {!isUser && (
                 <View style={styles.avatarMini}>
-                  <Bot color="#0D9488" size={14} />
+                  <Bot color={theme.colors.primary} size={14} />
                 </View>
               )}
 
@@ -197,9 +198,9 @@ export const AssistantChatScreen: React.FC = () => {
                     {msg.citedSources.map((src, i) => (
                       <View key={i} style={styles.sourceItem}>
                         {src.sourceType === 'wearable' ? (
-                          <Watch size={12} color="#0D9488" />
+                          <Watch size={12} color={theme.colors.primary} />
                         ) : (
-                          <FileCheck size={12} color="#3B82F6" />
+                          <FileCheck size={12} color={theme.colors.secondary} />
                         )}
                         <Text style={styles.sourceText}>
                           <Text style={{ fontWeight: '700' }}>{src.title}</Text> ({src.date})
@@ -225,11 +226,11 @@ export const AssistantChatScreen: React.FC = () => {
         {isSending && (
           <View style={[styles.messageRow, styles.messageRowAssistant]}>
             <View style={styles.avatarMini}>
-              <Bot color="#0D9488" size={14} />
+              <Bot color={theme.colors.primary} size={14} />
             </View>
             <View style={[styles.messageBubble, styles.bubbleAssistant]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <ActivityIndicator size="small" color="#0D9488" />
+                <ActivityIndicator size="small" color={theme.colors.primary} />
                 <Text style={styles.typingText}>
                   Recuperando nós do grafo e calculando correlação...
                 </Text>
@@ -262,7 +263,7 @@ export const AssistantChatScreen: React.FC = () => {
               onPress={() => handleSend(prompt)}
               disabled={isSending}
             >
-              <Sparkles color="#0D9488" size={12} />
+              <Sparkles color={theme.colors.primary} size={12} />
               <Text style={styles.promptChipText}>{prompt}</Text>
             </TouchableOpacity>
           ))}
@@ -276,7 +277,7 @@ export const AssistantChatScreen: React.FC = () => {
           onPress={handleSimulateVoiceInput}
           disabled={isSending}
         >
-          {isRecordingAudio ? <MicOff color="#FFFFFF" size={18} /> : <Mic color="#0D9488" size={18} />}
+          {isRecordingAudio ? <MicOff color="#FFFFFF" size={18} /> : <Mic color={theme.colors.primary} size={18} />}
         </TouchableOpacity>
 
         <TextInput
@@ -304,52 +305,54 @@ export const AssistantChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     paddingTop: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: theme.colors.border,
     gap: 12,
   },
   botAvatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: theme.colors.primaryLight,
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: theme.colors.primaryBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
   },
   activePill: {
-    backgroundColor: '#CCFBF1',
-    paddingHorizontal: 6,
+    backgroundColor: rivio.clinical.ai.bg,
+    borderWidth: 1,
+    borderColor: rivio.clinical.ai.border,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
   },
   activePillText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#0F766E',
+    color: rivio.clinical.ai.fg,
   },
   subtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: theme.colors.textSecondary,
   },
   categoriesBar: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: theme.colors.surfaceSubtle,
     paddingVertical: 6,
   },
   categoriesScroll: {
@@ -359,21 +362,21 @@ const styles = StyleSheet.create({
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: theme.colors.border,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
     gap: 5,
   },
   categoryChipActive: {
-    backgroundColor: '#0D9488',
-    borderColor: '#0F766E',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primaryDark,
   },
   categoryChipText: {
     fontSize: 11,
-    color: '#475569',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
   categoryChipTextActive: {
@@ -390,9 +393,9 @@ const styles = StyleSheet.create({
   disclaimerBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F0FDFA',
+    backgroundColor: rivio.clinical.ai.bg,
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: rivio.clinical.ai.border,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -401,7 +404,7 @@ const styles = StyleSheet.create({
   disclaimerText: {
     flex: 1,
     fontSize: 11,
-    color: '#134E4A',
+    color: rivio.clinical.ai.fg,
     lineHeight: 16,
   },
   messageRow: {
@@ -419,7 +422,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: theme.colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
@@ -430,13 +433,13 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   bubbleUser: {
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: theme.colors.border,
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -585,34 +588,34 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: theme.colors.primaryLight,
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: theme.colors.primaryBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
   micButtonActive: {
-    backgroundColor: '#E11D48',
+    backgroundColor: theme.colors.accentDanger,
     borderColor: '#BE123C',
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: theme.colors.surfaceSubtle,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 13,
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
   },
   sendButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#CBD5E1',
+    backgroundColor: theme.colors.border,
   },
 });

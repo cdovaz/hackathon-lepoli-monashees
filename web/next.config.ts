@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    "localhost",
+    "127.0.0.1",
+    "172.16.85.220",
+    "172.16.85.220:3000",
+    "172.16.100.61",
+    "172.16.100.61:3000",
+  ],
   poweredByHeader: false,
   logging: { incomingRequests: false, fetches: { fullUrl: false } },
   async headers() {

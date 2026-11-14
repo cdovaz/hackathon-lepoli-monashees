@@ -17,27 +17,81 @@ import {
   TrendingDown,
   Sparkles,
   Info,
+  Calendar,
+  Stethoscope,
+  Pill,
+  Hospital,
+  AlertTriangle,
+  FileCheck2,
 } from 'lucide-react-native';
 import { useHealthStore } from '../store/useHealthStore';
+import { theme, rivio } from '../theme/colors';
 import { BiomarkerChart } from '../components/BiomarkerChart';
 import { ReadinessRing } from '../components/ReadinessRing';
 import { Sparkline } from '../components/Sparkline';
+import { BiomarkerCategory } from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const CATEGORIES: (string)[] = [
+  'Todos',
+  'Alterados',
+  'Glicêmico',
+  'Lipídico',
+  'Hematológico',
+  'Hormonal',
+  'Renal',
+  'Inflamatório',
+  'Hepático',
+  'Nutricional',
+];
 
 interface TimelineScreenProps {
   onNavigateToTab: (tabName: string) => void;
 }
 
+type TimelineItem =
+  | {
+      kind: 'exam';
+      id: string;
+      date: string;
+      title: string;
+      category?: string;
+      value: number;
+      unit: string;
+      status: 'normal' | 'attention' | 'critical';
+      labName: string;
+      notes?: string;
+    }
+  | {
+      kind: 'event';
+      id: string;
+      date: string;
+      title: string;
+      eventType: string;
+      description?: string;
+      severity?: string;
+    };
+
 export const TimelineScreen: React.FC<TimelineScreenProps> = ({ onNavigateToTab }) => {
-  const { user, biomarkers, exams, wearables, activeAlerts, isSimulatedAnomalyActive } = useHealthStore();
+  const {
+    user,
+    biomarkers,
+    exams,
+    wearables,
+    activeAlerts,
+    clinicalEvents,
+    medications,
+    isSimulatedAnomalyActive,
+  } = useHealthStore();
+
   const [selectedBiomarkerId, setSelectedBiomarkerId] = useState<string>('glicose');
   const [categoryFilter, setCategoryFilter] = useState<string>('Todos');
+  const [timelineMode, setTimelineMode] = useState<'biomarkers' | 'chronological'>('chronological');
 
   const latestWearable = wearables[wearables.length - 1];
-
-  // Cálculo dinâmico do Score de Prontidão (Oura/Apple Health style)
-  const readinessScore = isSimulatedAnomalyActive ? 52 : 78;
+  const readinessScore = latestWearable?.readinessScore ?? (isSimulatedAnomalyActive ? 48 : 82);
+  const isAnomaly = Boolean(latestWearable?.hasAnomaly || isSimulatedAnomalyActive || (activeAlerts.length > 0 && !activeAlerts[0]?.resolved));
 
   // Agrupa os exames por biomarcador
   const groupedBiomarkers = Object.values(biomarkers).map((bm) => {
@@ -71,21 +125,48 @@ export const TimelineScreen: React.FC<TimelineScreenProps> = ({ onNavigateToTab 
     return item.definition.category === categoryFilter;
   });
 
-  const activeBiomarkerData = groupedBiomarkers.find(
-    (b) => b.definition.id === selectedBiomarkerId
-  );
+  // Se o biomarcador selecionado não tiver exames no paciente atual, ajusta para o primeiro que tiver
+  const activeBiomarkerData =
+    groupedBiomarkers.find((b) => b.definition.id === selectedBiomarkerId && b.measurements.length > 0) ||
+    groupedBiomarkers.find((b) => b.measurements.length > 0) ||
+    groupedBiomarkers[0];
+
+  // Mescla unificada de rivio_exams + rivio_clinical_events por ordem cronológica decrescente
+  const unifiedTimeline: TimelineItem[] = [
+    ...exams.map((e): TimelineItem => ({
+      kind: 'exam',
+      id: e.id,
+      date: e.date,
+      title: e.canonicalName,
+      category: biomarkers[e.biomarkerId]?.category,
+      value: e.value,
+      unit: e.unit,
+      status: e.status,
+      labName: e.labName,
+      notes: e.notes,
+    })),
+    ...clinicalEvents.map((evt): TimelineItem => ({
+      kind: 'event',
+      id: evt.id,
+      date: evt.date,
+      title: evt.title,
+      eventType: evt.eventType,
+      description: evt.description,
+      severity: evt.severity,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Sparklines com dados dos últimos 7 dias
   const last7DaysBpm = wearables.slice(-7).map((w) => w.restingHeartRate);
   const last7DaysHrv = wearables.slice(-7).map((w) => w.hrv);
   const last7DaysSleep = wearables.slice(-7).map((w) => w.sleepHours);
 
-  // Dados de correlação para teste (ex: cruzar com Frequência Cardíaca)
+  // Correlação com wearable se disponível
   const correlationDataset = {
     name: 'FC Repouso',
     unit: 'BPM',
-    color: '#E11D48',
-    data: wearables.slice(-5).map((w) => ({
+    color: rivio.series.hr,
+    data: wearables.slice(-8).map((w) => ({
       date: w.date,
       value: w.restingHeartRate,
     })),
@@ -93,58 +174,75 @@ export const TimelineScreen: React.FC<TimelineScreenProps> = ({ onNavigateToTab 
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* 1. HERO: Anel de Prontidão Cardiovascular (Apple Health / Oura Ring style) */}
-      <View style={[styles.heroCard, isSimulatedAnomalyActive && styles.heroCardAlert]}>
+      {/* 1. Header com Perfil do Paciente & Cenário Clínico */}
+      <View style={[styles.heroCard, isAnomaly && styles.heroCardAlert]}>
         <View style={styles.heroLeft}>
           <View style={styles.userBadge}>
             <Text style={styles.userBadgeText}>{user.name} • {user.age} anos</Text>
           </View>
           <Text style={styles.heroTitle}>
-            {isSimulatedAnomalyActive ? 'Atenção Cardíaca' : 'Prontidão Cardiovascular'}
+            {isAnomaly ? 'Atenção Clínica em Curso' : 'Prontuário Longitudinal'}
           </Text>
           <Text style={styles.heroSubtitle}>
-            {isSimulatedAnomalyActive
-              ? 'Arritmia noturna detectada com queda acentuada de recuperação fisiológica.'
-              : 'Seus sinais vitais e histórico metabólico estão em equilíbrio nos últimos 30 dias.'}
+            {user.scenario ||
+              (isAnomaly
+                ? 'Sinais de alerta ou alterações laboratoriais ativas no prontuário.'
+                : 'Sinais vitais e biomarcadores em acompanhamento contínuo.')}
           </Text>
           <View style={styles.metricTags}>
             <View style={styles.tagItem}>
-              <Text style={styles.tagLabel}>BPM Noturno:</Text>
-              <Text style={[styles.tagValue, isSimulatedAnomalyActive && { color: '#E11D48' }]}>
-                {latestWearable?.restingHeartRate} bpm
-              </Text>
+              <Text style={styles.tagLabel}>Exames:</Text>
+              <Text style={styles.tagValue}>{exams.length}</Text>
             </View>
             <View style={styles.tagItem}>
-              <Text style={styles.tagLabel}>Sono Profundo:</Text>
-              <Text style={styles.tagValue}>{latestWearable?.deepSleepHours}h</Text>
+              <Text style={styles.tagLabel}>Eventos:</Text>
+              <Text style={styles.tagValue}>{clinicalEvents.length}</Text>
+            </View>
+            <View style={styles.tagItem}>
+              <Text style={styles.tagLabel}>Wearables:</Text>
+              <Text style={styles.tagValue}>{wearables.length}d</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.heroRight}>
-          <ReadinessRing score={readinessScore} isAnomaly={isSimulatedAnomalyActive} size={105} />
+          <ReadinessRing score={readinessScore} isAnomaly={isAnomaly} size={98} />
         </View>
       </View>
 
-      {/* 2. Alerta Proativo em Destaque (RF-P04) */}
+      {/* 2. Alerta Proativo em Destaque */}
       {activeAlerts.length > 0 && (
-        <View style={styles.alertCard}>
+        <View
+          style={[
+            styles.alertCard,
+            activeAlerts[0].resolved && {
+              backgroundColor: rivio.surface.card,
+              borderColor: rivio.surface.line,
+            },
+          ]}
+        >
           <View style={styles.alertHeader}>
             <View style={styles.alertIconWrapper}>
-              <ShieldAlert color="#E11D48" size={20} />
+              <ShieldAlert
+                color={activeAlerts[0].resolved ? rivio.brand[600] : rivio.clinical.danger.fg}
+                size={20}
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>{activeAlerts[0].title}</Text>
+              <Text
+                style={[
+                  styles.alertTitle,
+                  activeAlerts[0].resolved && { color: rivio.ink[900] },
+                ]}
+              >
+                {activeAlerts[0].message}
+              </Text>
               <Text style={styles.alertTimestamp}>{activeAlerts[0].timestamp}</Text>
             </View>
           </View>
-          <Text style={styles.alertDescription}>{activeAlerts[0].description}</Text>
-          
-          <View style={styles.alertDataBox}>
-            <Text style={styles.alertDataText}>
-              <Text style={{ fontWeight: '700' }}>Registrado:</Text> {activeAlerts[0].valueDetected} (Seu habitual: {activeAlerts[0].baselineValue})
-            </Text>
-          </View>
+          {activeAlerts[0].context && (
+            <Text style={styles.alertDescription}>{activeAlerts[0].context}</Text>
+          )}
 
           <View style={styles.alertActions}>
             <TouchableOpacity
@@ -158,230 +256,422 @@ export const TimelineScreen: React.FC<TimelineScreenProps> = ({ onNavigateToTab 
               style={styles.alertSecondaryButton}
               onPress={() => onNavigateToTab('Compartilhar')}
             >
-              <Text style={styles.alertSecondaryButtonText}>Gerar QR Code Médico</Text>
+              <Text style={styles.alertSecondaryButtonText}>Gerar Token Médico</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* 3. Cards de Sinais Vitais com Sparklines Integrados */}
+      {/* 3. Cards de Sinais Vitais com Sparklines */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Sinais Vitais (Últimos 7 dias)</Text>
-        <TouchableOpacity onPress={() => onNavigateToTab('Dispositivos')}>
-          <Text style={styles.sectionLink}>Ver detalhes</Text>
+        <TouchableOpacity onPress={() => onNavigateToTab('Wearables')}>
+          <Text style={styles.sectionLink}>Ver wearables</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.vitalsRow}>
-        {/* Card BPM */}
-        <View style={[styles.vitalCard, isSimulatedAnomalyActive && styles.vitalCardAlert]}>
+        <View style={[styles.vitalCard, isAnomaly && styles.vitalCardAlert]}>
           <View style={styles.vitalHeaderRow}>
             <View style={styles.vitalIconTitle}>
-              <Heart color={isSimulatedAnomalyActive ? '#E11D48' : '#EF4444'} size={16} />
+              <Heart color={isAnomaly ? rivio.clinical.danger.fg : rivio.series.hr} size={15} />
               <Text style={styles.vitalLabel}>Frequência</Text>
             </View>
             <Sparkline
               data={last7DaysBpm}
-              color={isSimulatedAnomalyActive ? '#E11D48' : '#EF4444'}
-              width={54}
-              height={22}
+              color={isAnomaly ? rivio.clinical.danger.fg : rivio.series.hr}
+              width={50}
+              height={20}
             />
           </View>
-          <Text style={[styles.vitalValue, isSimulatedAnomalyActive && styles.vitalValueAlert]}>
-            {latestWearable?.restingHeartRate || 62}{' '}
-            <Text style={styles.vitalUnit}>BPM</Text>
+          <Text style={[styles.vitalValue, isAnomaly && styles.vitalValueAlert]}>
+            {latestWearable?.restingHeartRate || 68} <Text style={styles.vitalUnit}>BPM</Text>
           </Text>
           <Text style={styles.vitalSub}>
-            {isSimulatedAnomalyActive ? '⚠️ Taquicardia noturna' : 'Em repouso normal'}
+            {isAnomaly ? 'Atenção em repouso' : 'Repouso estável'}
           </Text>
         </View>
 
-        {/* Card HRV */}
-        <View style={[styles.vitalCard, isSimulatedAnomalyActive && styles.vitalCardAlert]}>
+        <View style={[styles.vitalCard, isAnomaly && styles.vitalCardAlert]}>
           <View style={styles.vitalHeaderRow}>
             <View style={styles.vitalIconTitle}>
-              <Activity color={isSimulatedAnomalyActive ? '#EA580C' : '#3B82F6'} size={16} />
+              <Activity color={isAnomaly ? rivio.clinical.warn.fg : rivio.series.hrv} size={15} />
               <Text style={styles.vitalLabel}>HRV</Text>
             </View>
             <Sparkline
               data={last7DaysHrv}
-              color={isSimulatedAnomalyActive ? '#EA580C' : '#3B82F6'}
-              width={54}
-              height={22}
+              color={isAnomaly ? rivio.clinical.warn.fg : rivio.series.hrv}
+              width={50}
+              height={20}
             />
           </View>
           <Text style={styles.vitalValue}>
-            {latestWearable?.hrv || 56}{' '}
-            <Text style={styles.vitalUnit}>ms</Text>
+            {latestWearable?.hrv || 48} <Text style={styles.vitalUnit}>ms</Text>
           </Text>
-          <Text style={styles.vitalSub}>
-            {isSimulatedAnomalyActive ? 'Queda severa (-62%)' : 'Recuperação ótima'}
-          </Text>
+          <Text style={styles.vitalSub}>Variabilidade cardíaca</Text>
         </View>
 
-        {/* Card Sono */}
         <View style={styles.vitalCard}>
           <View style={styles.vitalHeaderRow}>
             <View style={styles.vitalIconTitle}>
-              <Moon color="#8B5CF6" size={16} />
+              <Moon color={rivio.series.sleep} size={15} />
               <Text style={styles.vitalLabel}>Sono</Text>
             </View>
-            <Sparkline data={last7DaysSleep} color="#8B5CF6" width={54} height={22} />
+            <Sparkline data={last7DaysSleep} color={rivio.series.sleep} width={50} height={20} />
           </View>
           <Text style={styles.vitalValue}>
-            {latestWearable?.sleepHours || 7.2}{' '}
-            <Text style={styles.vitalUnit}>h</Text>
+            {latestWearable?.sleepHours || 7.2} <Text style={styles.vitalUnit}>h</Text>
           </Text>
           <Text style={styles.vitalSub}>
-            {latestWearable?.deepSleepHours || 1.8}h profundo
+            {latestWearable?.deepSleepHours || 1.6}h profundo
           </Text>
         </View>
       </View>
 
-      {/* 4. Gráfico do Biomarcador Selecionado com Seletores e Correlação (RF-P02) */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Evolução Histórica do Biomarcador</Text>
-        <Text style={styles.sectionBadge}>
-          {activeBiomarkerData?.measurements.length || 0} aferições
-        </Text>
-      </View>
-
-      {activeBiomarkerData && (
-        <View style={styles.chartCard}>
-          <View style={styles.chartCardHeader}>
-            <View>
-              <Text style={styles.chartBiomarkerName}>
-                {activeBiomarkerData.definition.canonicalName}
-              </Text>
-              <Text style={styles.chartBiomarkerDesc}>
-                {activeBiomarkerData.definition.description}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                activeBiomarkerData.isOutOfRange
-                  ? styles.statusBadgeWarning
-                  : styles.statusBadgeSuccess,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusBadgeText,
-                  activeBiomarkerData.isOutOfRange
-                    ? styles.statusBadgeTextWarning
-                    : styles.statusBadgeTextSuccess,
-                ]}
-              >
-                {activeBiomarkerData.isOutOfRange ? 'Alterado' : 'Dentro da Faixa'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Componente BiomarkerChart Aprimorado com Tooltip e Correlação */}
-          <BiomarkerChart
-            data={activeBiomarkerData.measurements.map((m) => ({
-              date: m.date,
-              value: m.value,
-              labName: m.labName,
-            }))}
-            refMin={activeBiomarkerData.definition.refMin}
-            refMax={activeBiomarkerData.definition.refMax}
-            unit={activeBiomarkerData.definition.unit}
-            lineColor="#0D9488"
-            width={SCREEN_WIDTH - 64}
-            height={200}
-            correlationData={
-              activeBiomarkerData.definition.id === 'ferritina' || activeBiomarkerData.definition.id === 'glicose'
-                ? correlationDataset
-                : undefined
-            }
+      {/* 4. Alternador de Modo de Visualização */}
+      <View style={styles.modeToggleRow}>
+        <TouchableOpacity
+          style={[
+            styles.modeToggleButton,
+            timelineMode === 'chronological' && styles.modeToggleButtonActive,
+          ]}
+          onPress={() => setTimelineMode('chronological')}
+        >
+          <Calendar
+            size={14}
+            color={timelineMode === 'chronological' ? rivio.brand[700] : rivio.ink[400]}
           />
-        </View>
-      )}
+          <Text
+            style={[
+              styles.modeToggleText,
+              timelineMode === 'chronological' && styles.modeToggleTextActive,
+            ]}
+          >
+            Linha Cronológica Unificada ({unifiedTimeline.length})
+          </Text>
+        </TouchableOpacity>
 
-      {/* 5. Lista de Biomarcadores com Filtros */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Selecione para Inspecionar</Text>
+        <TouchableOpacity
+          style={[
+            styles.modeToggleButton,
+            timelineMode === 'biomarkers' && styles.modeToggleButtonActive,
+          ]}
+          onPress={() => setTimelineMode('biomarkers')}
+        >
+          <Activity
+            size={14}
+            color={timelineMode === 'biomarkers' ? rivio.brand[700] : rivio.ink[400]}
+          />
+          <Text
+            style={[
+              styles.modeToggleText,
+              timelineMode === 'biomarkers' && styles.modeToggleTextActive,
+            ]}
+          >
+            Gráficos por Biomarcador
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {['Todos', 'Alterados', 'Glicêmico', 'Lipídico', 'Hematológico', 'Hormonal'].map(
-          (category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.filterChip,
-                categoryFilter === category && styles.filterChipActive,
-              ]}
-              onPress={() => setCategoryFilter(category)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  categoryFilter === category && styles.filterChipTextActive,
-                ]}
-              >
-                {category}
-              </Text>
-            </TouchableOpacity>
-          )
-        )}
-      </ScrollView>
-
-      <View style={styles.biomarkerGrid}>
-        {filteredBiomarkers.map((item) => {
-          const isSelected = item.definition.id === selectedBiomarkerId;
-          return (
-            <TouchableOpacity
-              key={item.definition.id}
-              style={[
-                styles.biomarkerRowCard,
-                isSelected && styles.biomarkerRowCardSelected,
-                item.isOutOfRange && styles.biomarkerRowCardOutOfRange,
-              ]}
-              onPress={() => setSelectedBiomarkerId(item.definition.id)}
-            >
-              <View style={styles.biomarkerRowMain}>
-                <View>
-                  <Text style={styles.biomarkerRowTitle}>
-                    {item.definition.canonicalName}
-                  </Text>
-                  <Text style={styles.biomarkerRowCategory}>
-                    {item.definition.category} • Ref: {item.definition.refMin}-
-                    {item.definition.refMax} {item.definition.unit}
-                  </Text>
-                </View>
-
-                <View style={styles.biomarkerRowValues}>
-                  {item.latest ? (
-                    <>
-                      <Text
+      {/* 5A. MODO CRONOLÓGICO: Mescla de rivio_exams + rivio_clinical_events */}
+      {timelineMode === 'chronological' ? (
+        <View style={styles.timelineSection}>
+          <View style={styles.timelineList}>
+            {unifiedTimeline.slice(0, 30).map((item, idx) => {
+              if (item.kind === 'event') {
+                const isHospital = item.eventType.toLowerCase().includes('interna') || item.eventType.toLowerCase().includes('hospital');
+                return (
+                  <View key={item.id} style={styles.timelineItemWrap}>
+                    <View style={styles.timelineLine}>
+                      <View
                         style={[
-                          styles.biomarkerValueText,
-                          item.isOutOfRange && styles.biomarkerValueTextAlert,
+                          styles.timelineDot,
+                          {
+                            backgroundColor: isHospital ? rivio.clinical.danger.bg : rivio.clinical.info.bg,
+                            borderColor: isHospital ? rivio.clinical.danger.fg : rivio.clinical.info.fg,
+                          },
                         ]}
                       >
-                        {item.latest.value}{' '}
-                        <Text style={styles.biomarkerUnitText}>
-                          {item.definition.unit}
-                        </Text>
-                      </Text>
-                      <View style={styles.biomarkerTrendBox}>
-                        {item.trend === 'up' && <TrendingUp size={12} color="#E11D48" />}
-                        {item.trend === 'down' && <TrendingDown size={12} color="#10B981" />}
-                        <Text style={styles.biomarkerDateText}>{item.latest.date}</Text>
+                        {isHospital ? (
+                          <Hospital size={12} color={rivio.clinical.danger.fg} />
+                        ) : (
+                          <Stethoscope size={12} color={rivio.clinical.info.fg} />
+                        )}
                       </View>
-                    </>
-                  ) : (
-                    <Text style={styles.noDataText}>Sem dados</Text>
-                  )}
+                      {idx < Math.min(unifiedTimeline.length, 30) - 1 && (
+                        <View style={styles.timelineVerticalLine} />
+                      )}
+                    </View>
+
+                    <View style={[styles.timelineCard, styles.timelineEventCard]}>
+                      <View style={styles.timelineCardHeader}>
+                        <View style={styles.eventBadgeWrap}>
+                          <Text style={styles.eventTypeBadge}>{item.eventType}</Text>
+                          <Text style={styles.timelineDate}>{item.date}</Text>
+                        </View>
+                        {item.severity && (
+                          <View
+                            style={[
+                              styles.severityPill,
+                              {
+                                backgroundColor:
+                                  item.severity === 'critical'
+                                    ? rivio.clinical.danger.bg
+                                    : rivio.clinical.warn.bg,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.severityPillText,
+                                {
+                                  color:
+                                    item.severity === 'critical'
+                                      ? rivio.clinical.danger.fg
+                                      : rivio.clinical.warn.fg,
+                                },
+                              ]}
+                            >
+                              {item.severity}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.timelineItemTitle}>{item.title}</Text>
+                      {item.description && (
+                        <Text style={styles.timelineItemDesc}>{item.description}</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              }
+
+              // Item de Exame
+              const isAlert = item.status !== 'normal';
+              return (
+                <View key={item.id} style={styles.timelineItemWrap}>
+                  <View style={styles.timelineLine}>
+                    <View
+                      style={[
+                        styles.timelineDot,
+                        {
+                          backgroundColor: isAlert ? rivio.clinical.danger.bg : rivio.brand[50],
+                          borderColor: isAlert ? rivio.clinical.danger.fg : rivio.brand[600],
+                        },
+                      ]}
+                    >
+                      <FileCheck2
+                        size={12}
+                        color={isAlert ? rivio.clinical.danger.fg : rivio.brand[600]}
+                      />
+                    </View>
+                    {idx < Math.min(unifiedTimeline.length, 30) - 1 && (
+                      <View style={styles.timelineVerticalLine} />
+                    )}
+                  </View>
+
+                  <View style={styles.timelineCard}>
+                    <View style={styles.timelineCardHeader}>
+                      <Text style={styles.timelineCategoryText}>
+                        {item.category || 'Exame Laboratorial'}
+                      </Text>
+                      <Text style={styles.timelineDate}>{item.date}</Text>
+                    </View>
+
+                    <View style={styles.examMainRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.timelineItemTitle}>{item.title}</Text>
+                        <Text style={styles.timelineLabMeta}>{item.labName}</Text>
+                      </View>
+
+                      <View style={styles.examValueBadgeWrap}>
+                        <Text
+                          style={[
+                            styles.examTimelineValue,
+                            isAlert && styles.examTimelineValueAlert,
+                          ]}
+                        >
+                          {item.value} <Text style={styles.examTimelineUnit}>{item.unit}</Text>
+                        </Text>
+                        <View
+                          style={[
+                            styles.statusPillSmall,
+                            {
+                              backgroundColor: isAlert
+                                ? rivio.clinical.danger.bg
+                                : rivio.clinical.ok.bg,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.statusPillSmallText,
+                              {
+                                color: isAlert
+                                  ? rivio.clinical.danger.fg
+                                  : rivio.clinical.ok.fg,
+                              },
+                            ]}
+                          >
+                            {isAlert ? 'Alterado' : 'Normal'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {item.notes && <Text style={styles.examNotesText}>{item.notes}</Text>}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : (
+        /* 5B. MODO BIOMARCADORES: Gráfico Interativo e Filtros por Categoria */
+        <View>
+          {activeBiomarkerData && (
+            <View style={styles.chartCard}>
+              <View style={styles.chartCardHeader}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.chartBiomarkerName}>
+                    {activeBiomarkerData.definition.canonicalName}
+                  </Text>
+                  <Text style={styles.chartBiomarkerDesc}>
+                    {activeBiomarkerData.definition.description}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    activeBiomarkerData.isOutOfRange
+                      ? styles.statusBadgeWarning
+                      : styles.statusBadgeSuccess,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusBadgeText,
+                      activeBiomarkerData.isOutOfRange
+                        ? styles.statusBadgeTextWarning
+                        : styles.statusBadgeTextSuccess,
+                    ]}
+                  >
+                    {activeBiomarkerData.isOutOfRange ? 'Alterado' : 'Dentro da Faixa'}
+                  </Text>
                 </View>
               </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+
+              <BiomarkerChart
+                data={activeBiomarkerData.measurements.map((m) => ({
+                  date: m.date,
+                  value: m.value,
+                  labName: m.labName,
+                }))}
+                refMin={activeBiomarkerData.definition.refMin}
+                refMax={activeBiomarkerData.definition.refMax}
+                unit={activeBiomarkerData.definition.unit}
+                lineColor={rivio.brand[600]}
+                width={SCREEN_WIDTH - 64}
+                height={210}
+                correlationData={
+                  activeBiomarkerData.definition.id === 'glicose' ||
+                  activeBiomarkerData.definition.id === 'ferritina' ||
+                  activeBiomarkerData.definition.id === 'leucocitos'
+                    ? correlationDataset
+                    : undefined
+                }
+              />
+            </View>
+          )}
+
+          {/* Filtros de Categoria (Todas as 8 categorias oficiais do schema) */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Filtrar por Categoria</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterRow}
+            contentContainerStyle={styles.filterRowContent}
+          >
+            {CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.filterChip,
+                  categoryFilter === category && styles.filterChipActive,
+                ]}
+                onPress={() => setCategoryFilter(category)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    categoryFilter === category && styles.filterChipTextActive,
+                  ]}
+                >
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Grade de Seleção de Biomarcadores */}
+          <View style={styles.biomarkerGrid}>
+            {filteredBiomarkers.map((item) => {
+              const isSelected = item.definition.id === activeBiomarkerData?.definition.id;
+              return (
+                <TouchableOpacity
+                  key={item.definition.id}
+                  style={[
+                    styles.biomarkerRowCard,
+                    isSelected && styles.biomarkerRowCardSelected,
+                    item.isOutOfRange && styles.biomarkerRowCardOutOfRange,
+                  ]}
+                  onPress={() => setSelectedBiomarkerId(item.definition.id)}
+                >
+                  <View style={styles.biomarkerRowMain}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.biomarkerRowTitle}>
+                        {item.definition.canonicalName}
+                      </Text>
+                      <Text style={styles.biomarkerRowCategory}>
+                        {item.definition.category} • Ref: {item.definition.refMin}-
+                        {item.definition.refMax} {item.definition.unit}
+                      </Text>
+                    </View>
+
+                    <View style={styles.biomarkerRowValues}>
+                      {item.latest ? (
+                        <>
+                          <Text
+                            style={[
+                              styles.biomarkerValueText,
+                              item.isOutOfRange && styles.biomarkerValueTextAlert,
+                            ]}
+                          >
+                            {item.latest.value}{' '}
+                            <Text style={styles.biomarkerUnitText}>
+                              {item.definition.unit}
+                            </Text>
+                          </Text>
+                          <View style={styles.biomarkerTrendBox}>
+                            {item.trend === 'up' && <TrendingUp size={12} color="#E11D48" />}
+                            {item.trend === 'down' && <TrendingDown size={12} color="#10B981" />}
+                            <Text style={styles.biomarkerDateText}>{item.latest.date}</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={styles.noDataText}>Sem registros</Text>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -389,7 +679,7 @@ export const TimelineScreen: React.FC<TimelineScreenProps> = ({ onNavigateToTab 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: rivio.surface.base,
   },
   contentContainer: {
     padding: 16,
@@ -397,22 +687,22 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 18,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.lg,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: rivio.surface.line,
     alignItems: 'center',
-    marginBottom: 18,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 2,
   },
   heroCardAlert: {
-    borderColor: '#FECDD3',
-    backgroundColor: '#FFF1F2',
+    borderColor: rivio.clinical.danger.border,
+    backgroundColor: rivio.clinical.danger.bg,
   },
   heroLeft: {
     flex: 1,
@@ -424,164 +714,154 @@ const styles = StyleSheet.create({
   },
   userBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: rivio.surface.subtle,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   userBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
+    color: rivio.ink[600],
   },
   heroTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '800',
+    color: rivio.ink[900],
+    marginBottom: 3,
   },
   heroSubtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: rivio.ink[600],
     lineHeight: 15,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   metricTags: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   tagItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    gap: 3,
+    backgroundColor: rivio.surface.subtle,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   tagLabel: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: rivio.ink[400],
+    fontWeight: '600',
   },
   tagValue: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 10,
+    fontWeight: '700',
+    color: rivio.ink[900],
   },
   alertCard: {
-    backgroundColor: '#FFF1F2',
-    borderWidth: 1.5,
-    borderColor: '#FECDD3',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
+    backgroundColor: rivio.clinical.danger.bg,
+    borderWidth: 1,
+    borderColor: rivio.clinical.danger.border,
+    borderRadius: rivio.radius.md,
+    padding: 14,
+    marginBottom: 16,
   },
   alertHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
-    marginBottom: 8,
+    alignItems: 'center',
   },
   alertIconWrapper: {
-    backgroundColor: '#FFE4E6',
-    padding: 8,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(225, 29, 72, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   alertTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#BE123C',
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.clinical.danger.fg,
   },
   alertTimestamp: {
     fontSize: 10,
-    color: '#E11D48',
+    color: rivio.ink[400],
+    marginTop: 1,
   },
   alertDescription: {
     fontSize: 12,
-    color: '#881337',
-    lineHeight: 17,
-    marginBottom: 10,
-  },
-  alertDataBox: {
-    backgroundColor: '#FFFFFF',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  alertDataText: {
-    fontSize: 11,
-    color: '#9F1239',
+    color: rivio.ink[900],
+    marginTop: 8,
+    lineHeight: 16,
   },
   alertActions: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 12,
   },
   alertPrimaryButton: {
-    flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#E11D48',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: rivio.brand[600],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: rivio.radius.sm,
   },
   alertPrimaryButtonText: {
     color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
-    fontSize: 12,
   },
   alertSecondaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: rivio.surface.card,
     borderWidth: 1,
-    borderColor: '#FECDD3',
-    paddingVertical: 10,
+    borderColor: rivio.surface.line,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: rivio.radius.sm,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   alertSecondaryButtonText: {
-    color: '#BE123C',
-    fontWeight: '700',
+    color: rivio.ink[900],
     fontSize: 11,
+    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
     marginBottom: 10,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: rivio.ink[900],
   },
   sectionLink: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#0D9488',
-  },
-  sectionBadge: {
-    fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: rivio.brand[600],
   },
   vitalsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 16,
   },
   vitalCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: rivio.surface.line,
+    padding: 10,
   },
   vitalCardAlert: {
-    borderColor: '#FECDD3',
-    backgroundColor: '#FFF1F2',
+    borderColor: rivio.clinical.danger.border,
+    backgroundColor: rivio.clinical.danger.bg,
   },
   vitalHeaderRow: {
     flexDirection: 'row',
@@ -596,117 +876,302 @@ const styles = StyleSheet.create({
   },
   vitalLabel: {
     fontSize: 10,
-    color: '#64748B',
-    fontWeight: '700',
+    fontWeight: '600',
+    color: rivio.ink[600],
   },
   vitalValue: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '800',
+    color: rivio.ink[900],
   },
   vitalValueAlert: {
-    color: '#E11D48',
+    color: rivio.clinical.danger.fg,
   },
   vitalUnit: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#64748B',
+    fontWeight: '500',
+    color: rivio.ink[600],
   },
   vitalSub: {
     fontSize: 9,
-    color: '#94A3B8',
+    color: rivio.ink[400],
     marginTop: 2,
   },
-  chartCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
+
+  /* Alternador de Modo */
+  modeToggleRow: {
+    flexDirection: 'row',
+    backgroundColor: rivio.surface.subtle,
+    borderRadius: rivio.radius.sm,
+    padding: 3,
+    marginBottom: 14,
+    gap: 4,
+  },
+  modeToggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: rivio.radius.sm - 2,
+  },
+  modeToggleButtonActive: {
+    backgroundColor: rivio.surface.card,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  modeToggleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: rivio.ink[400],
+  },
+  modeToggleTextActive: {
+    color: rivio.brand[700],
+    fontWeight: '700',
+  },
+
+  /* Timeline Cronológica Unificada */
+  timelineSection: {
+    marginTop: 4,
+  },
+  timelineList: {
+    paddingLeft: 4,
+  },
+  timelineItemWrap: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  timelineLine: {
+    width: 28,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  timelineVerticalLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: rivio.surface.line,
+    marginTop: 2,
+    marginBottom: -4,
+  },
+  timelineCard: {
+    flex: 1,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: rivio.surface.line,
+    padding: 12,
+    marginLeft: 8,
+  },
+  timelineEventCard: {
+    backgroundColor: rivio.surface.subtle,
+    borderLeftWidth: 3,
+    borderLeftColor: rivio.brand[500],
+  },
+  timelineCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  eventBadgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  eventTypeBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    color: rivio.brand[700],
+    backgroundColor: rivio.brand[100],
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  timelineCategoryText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: rivio.ink[400],
+    textTransform: 'uppercase',
+  },
+  timelineDate: {
+    fontSize: 11,
+    color: rivio.ink[400],
+  },
+  timelineItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.ink[900],
+  },
+  timelineItemDesc: {
+    fontSize: 11,
+    color: rivio.ink[600],
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  timelineLabMeta: {
+    fontSize: 11,
+    color: rivio.ink[400],
+    marginTop: 2,
+  },
+  severityPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  severityPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  examMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  examValueBadgeWrap: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  examTimelineValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.ink[900],
+  },
+  examTimelineValueAlert: {
+    color: rivio.clinical.danger.fg,
+  },
+  examTimelineUnit: {
+    fontSize: 10,
+    color: rivio.ink[400],
+  },
+  statusPillSmall: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  statusPillSmallText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  examNotesText: {
+    fontSize: 10,
+    color: rivio.ink[600],
+    backgroundColor: rivio.surface.subtle,
+    padding: 6,
+    borderRadius: 4,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+
+  /* Gráficos por Biomarcador */
+  chartCard: {
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.md,
+    borderWidth: 1,
+    borderColor: rivio.surface.line,
+    padding: 14,
+    marginBottom: 16,
   },
   chartCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   chartBiomarkerName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    color: rivio.ink[900],
   },
   chartBiomarkerDesc: {
     fontSize: 11,
-    color: '#64748B',
+    color: rivio.ink[400],
     marginTop: 2,
-    maxWidth: 200,
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: rivio.radius.pill,
   },
   statusBadgeSuccess: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: rivio.clinical.ok.bg,
+    borderWidth: 1,
+    borderColor: rivio.clinical.ok.border,
   },
   statusBadgeWarning: {
-    backgroundColor: '#FFF1F2',
+    backgroundColor: rivio.clinical.danger.bg,
+    borderWidth: 1,
+    borderColor: rivio.clinical.danger.border,
   },
   statusBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   statusBadgeTextSuccess: {
-    color: '#047857',
+    color: rivio.clinical.ok.fg,
   },
   statusBadgeTextWarning: {
-    color: '#BE123C',
+    color: rivio.clinical.danger.fg,
   },
   filterRow: {
-    flexDirection: 'row',
     marginBottom: 12,
   },
+  filterRowContent: {
+    gap: 6,
+    paddingRight: 16,
+  },
   filterChip: {
+    backgroundColor: rivio.surface.card,
+    borderWidth: 1,
+    borderColor: rivio.surface.line,
+    borderRadius: rivio.radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F1F5F9',
-    marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#0D9488',
+    backgroundColor: rivio.brand[50],
+    borderColor: rivio.brand[500],
   },
   filterChipText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
+    color: rivio.ink[600],
+    fontWeight: '500',
   },
   filterChipTextActive: {
-    color: '#FFFFFF',
+    color: rivio.brand[700],
+    fontWeight: '700',
   },
   biomarkerGrid: {
     gap: 8,
   },
   biomarkerRowCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.sm,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: rivio.surface.line,
+    padding: 12,
   },
   biomarkerRowCardSelected: {
-    borderColor: '#0D9488',
-    backgroundColor: '#F0FDFA',
+    borderColor: rivio.brand[500],
+    backgroundColor: rivio.brand[50],
   },
   biomarkerRowCardOutOfRange: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#E11D48',
+    borderLeftWidth: 3,
+    borderLeftColor: rivio.clinical.danger.fg,
   },
   biomarkerRowMain: {
     flexDirection: 'row',
@@ -716,41 +1181,42 @@ const styles = StyleSheet.create({
   biomarkerRowTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: rivio.ink[900],
   },
   biomarkerRowCategory: {
     fontSize: 10,
-    color: '#64748B',
+    color: rivio.ink[400],
     marginTop: 2,
   },
   biomarkerRowValues: {
     alignItems: 'flex-end',
+    gap: 2,
   },
   biomarkerValueText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.ink[900],
   },
   biomarkerValueTextAlert: {
-    color: '#E11D48',
+    color: rivio.clinical.danger.fg,
   },
   biomarkerUnitText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#64748B',
+    fontWeight: '500',
+    color: rivio.ink[400],
   },
   biomarkerTrendBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    gap: 3,
   },
   biomarkerDateText: {
     fontSize: 9,
-    color: '#94A3B8',
+    color: rivio.ink[400],
   },
   noDataText: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: rivio.ink[400],
+    fontStyle: 'italic',
   },
 });

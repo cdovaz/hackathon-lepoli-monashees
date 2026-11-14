@@ -30,6 +30,7 @@ import {
   FolderOpen,
 } from 'lucide-react-native';
 import { useHealthStore } from '../store/useHealthStore';
+import { theme } from '../theme/colors';
 import { ExamMeasurement } from '../types';
 
 interface ExamIngestionScreenProps {
@@ -179,7 +180,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
         <View style={styles.viewfinderCard}>
           <View style={styles.viewfinderHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Scan color="#0D9488" size={16} />
+              <Scan color={theme.colors.brandDot} size={16} />
               <Text style={styles.viewfinderTitle}>Visor de Scanner Óptico Ativo</Text>
             </View>
             <TouchableOpacity onPress={() => setIsCameraActive(false)}>
@@ -222,7 +223,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
         /* Área de Upload com Suporte a Arquivos Reais */
         <View style={styles.uploadArea}>
           <View style={styles.uploadIconWrapper}>
-            <UploadCloud color="#0D9488" size={30} />
+            <UploadCloud color={theme.colors.primary} size={30} />
           </View>
           <Text style={styles.uploadTitle}>Envie laudos reais ou fotografe</Text>
           <Text style={styles.uploadSubtitle}>
@@ -236,7 +237,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
               onPress={handlePickDocument}
               disabled={isProcessing}
             >
-              <FileText color="#0D9488" size={16} />
+              <FileText color={theme.colors.primary} size={16} />
               <Text style={styles.realUploadBtnText}>Escolher PDF Real</Text>
             </TouchableOpacity>
 
@@ -274,7 +275,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
           disabled={isProcessing}
         >
           <View style={styles.presetIcon}>
-            <FileCheck color="#0D9488" size={18} />
+            <FileCheck color={theme.colors.primary} size={18} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.presetTitle}>Laudo Fleury 2026 (PDF Digital)</Text>
@@ -306,7 +307,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
       {/* Feedback de Processamento em Tempo Real */}
       {isProcessing && (
         <View style={styles.processingCard}>
-          <ActivityIndicator size="small" color="#0D9488" />
+          <ActivityIndicator size="small" color={theme.colors.primary} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.processingTitle}>Processando "{selectedFileName}"</Text>
             <Text style={styles.processingStep}>{currentStep}</Text>
@@ -390,8 +391,8 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
           const sizeKb = doc.size ? Math.round(doc.size / 1024) : 380;
           return (
             <View key={doc.id} style={styles.docCard}>
-              <View style={[styles.docIconCircle, { backgroundColor: isPdf ? '#FEE2E2' : '#F0FDFA' }]}>
-                {isPdf ? <FileText color="#E11D48" size={18} /> : <ImageIcon color="#0D9488" size={18} />}
+              <View style={[styles.docIconCircle, { backgroundColor: isPdf ? '#FEE2E2' : theme.colors.primaryLight }]}>
+                {isPdf ? <FileText color={theme.colors.accentDanger} size={18} /> : <ImageIcon color={theme.colors.primary} size={18} />}
               </View>
               <View style={styles.docInfo}>
                 <Text style={styles.docName} numberOfLines={1}>{doc.name}</Text>
@@ -416,7 +417,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <ShieldCheck color="#0D9488" size={20} />
+                <ShieldCheck color={theme.colors.primary} size={20} />
                 <Text style={styles.modalTitle}>Conferência de Extração IA</Text>
               </View>
               <TouchableOpacity onPress={() => setShowReviewModal(false)}>
@@ -462,7 +463,7 @@ export const ExamIngestionScreen: React.FC<ExamIngestionScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   contentContainer: {
     padding: 16,
@@ -475,11 +476,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: theme.colors.textSecondary,
     marginTop: 4,
     lineHeight: 17,
   },
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 14,
@@ -573,10 +574,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   uploadArea: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#CCFBF1',
+    borderColor: theme.colors.primaryBorder,
     borderStyle: 'dashed',
     padding: 18,
     alignItems: 'center',
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: theme.colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -594,12 +595,12 @@ const styles = StyleSheet.create({
   uploadTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   uploadSubtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 3,
     marginBottom: 14,
@@ -617,9 +618,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: theme.colors.border,
     paddingVertical: 11,
     borderRadius: 12,
     gap: 6,
@@ -627,12 +628,12 @@ const styles = StyleSheet.create({
   realUploadBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0D9488',
+    color: theme.colors.primary,
   },
   scannerBtnFull: {
     minWidth: '100%',
-    backgroundColor: '#0D9488',
-    borderColor: '#0F766E',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primaryDark,
   },
   demoSection: {
     marginBottom: 20,
@@ -693,21 +694,21 @@ const styles = StyleSheet.create({
   processingTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#134E4A',
+    color: theme.colors.primaryDark,
   },
   processingStep: {
     fontSize: 11,
-    color: '#0D9488',
+    color: theme.colors.primary,
     marginTop: 2,
   },
   resultCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#10B981',
+    borderColor: theme.colors.badgePositiveBorder,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#10B981',
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -721,20 +722,20 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#065F46',
+    color: theme.colors.badgePositiveText,
   },
   resultSubtitle: {
     fontSize: 11,
-    color: '#047857',
+    color: theme.colors.primaryDark,
   },
   reviewLink: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0D9488',
+    color: theme.colors.primary,
   },
   extractedTable: {
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: theme.colors.surfaceSubtle,
     paddingTop: 10,
     marginBottom: 14,
     gap: 8,
@@ -748,19 +749,19 @@ const styles = StyleSheet.create({
   extractedName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
+    color: theme.colors.textPrimary,
   },
   extractedRef: {
     fontSize: 11,
-    color: '#64748B',
+    color: theme.colors.textSecondary,
   },
   extractedVal: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
   },
   extractedValAlert: {
-    color: '#E11D48',
+    color: theme.colors.accentDanger,
   },
   extractedStatusBadge: {
     fontSize: 10,
@@ -771,16 +772,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   extractedStatusBadgeOk: {
-    backgroundColor: '#DCFCE7',
-    color: '#15803D',
+    backgroundColor: theme.colors.badgePositiveBg,
+    color: theme.colors.badgePositiveText,
   },
   extractedStatusBadgeAlert: {
-    backgroundColor: '#FFE4E6',
-    color: '#BE123C',
+    backgroundColor: theme.colors.accentDangerLight,
+    color: theme.colors.accentDanger,
   },
   viewTimelineButton: {
     flexDirection: 'row',
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     borderRadius: 12,
     justifyContent: 'center',
@@ -908,7 +909,7 @@ const styles = StyleSheet.create({
   },
   modalConfirmButton: {
     flexDirection: 'row',
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     borderRadius: 14,
     justifyContent: 'center',

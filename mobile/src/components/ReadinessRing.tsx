@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { theme, rivio } from '../theme/colors';
 
 interface ReadinessRingProps {
   score: number; // 0 a 100
@@ -19,8 +20,8 @@ export const ReadinessRing: React.FC<ReadinessRingProps> = ({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (circumference * score) / 100;
 
-  const ringColor = isAnomaly ? '#E11D48' : '#0D9488';
-  const trackColor = isAnomaly ? '#FFE4E6' : '#CCFBF1';
+  const ringColor = isAnomaly ? rivio.clinical.danger.fg : rivio.brand[600];
+  const trackColor = isAnomaly ? rivio.clinical.danger.bg : rivio.brand[100];
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
   },
   scoreMax: {
     fontSize: 10,
-    color: '#64748B',
+    color: theme.colors.textSecondary,
     fontWeight: '700',
   },
 });

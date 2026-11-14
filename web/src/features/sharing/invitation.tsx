@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, QrCode } from "lucide-react";
+import { ArrowRight, KeyRound, QrCode } from "lucide-react";
 import { useDoctor } from "@/features/session/provider";
 import { authenticationUrl } from "@/lib/api/http";
 import { parseInvitation } from "./parse-invitation";
@@ -49,7 +49,7 @@ export function InvitationExperience({
         if (request.signal.aborted) return;
         setInvitation(r.data);
         setTemporary(r.data.temporaryAccess);
-        router.replace(`${base}/consultation`);
+        router.replace(`${base}/consultation?view=patient`);
       } catch (e) {
         if (!request.signal.aborted) {
           setError(e as Error);
@@ -105,10 +105,9 @@ export function InvitationExperience({
   return (
     <div className="sharing-form stack">
       <div>
-        <h1>Abrir convite do paciente</h1>
+        <h1>Acessar prontuário com Token</h1>
         <p className="muted">
-          Use o QR ou link compartilhado para consultar o contexto autorizado ou
-          solicitar acompanhamento.
+          Digite o token temporário informado pelo paciente no aplicativo mobile para liberar o cockpit clínico seguro.
         </p>
       </div>
       {!ctx.sessionReady ? (
@@ -126,10 +125,9 @@ export function InvitationExperience({
             />
           ) : (
             <section className="panel stack">
-              <h2>Receber compartilhamento</h2>
+              <h2>Digitar Token de Acesso</h2>
               <p>
-                O convite é validado pelo serviço central. Um link de duas horas
-                não cria acompanhamento permanente.
+                O token é gerado pelo paciente com prazo de duas horas e escopo de consentimento granular.
               </p>
               <form
                 className="stack"
@@ -139,7 +137,7 @@ export function InvitationExperience({
                 }}
               >
                 <label className="field" htmlFor="invitation">
-                  Link ou código de compartilhamento
+                  Token do paciente
                   <input
                     id="invitation"
                     autoComplete="off"
@@ -148,17 +146,35 @@ export function InvitationExperience({
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     maxLength={4096}
-                    placeholder="Cole o link recebido do paciente"
+                    placeholder="Ex: 6 DÍGITOS"
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: "18px",
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                    }}
                     required
                     disabled={resolving}
                   />
                 </label>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <span className="small muted">Atalhos rápidos:</span>
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => setValue("demo-consultation")}
+                    disabled={resolving}
+                  >
+                    demo-consultation
+                  </button>
+                </div>
                 <div className="sharing-options">
                   <button
                     className="button"
                     disabled={resolving || !value.trim()}
                   >
-                    {resolving ? "Validando convite…" : "Validar convite"}
+                    <KeyRound size={16} />
+                    {resolving ? "Validando token…" : "Validar Token & Acessar"}
                     <ArrowRight size={16} />
                   </button>
                   <button
@@ -167,8 +183,8 @@ export function InvitationExperience({
                     disabled={resolving}
                     onClick={() => setScanner((v) => !v)}
                   >
-                    <QrCode size={18} />
-                    Ler QR pela câmera
+                    <QrCode size={16} />
+                    Escanear câmera
                   </button>
                 </div>
               </form>
@@ -178,7 +194,7 @@ export function InvitationExperience({
             <Scanner onRead={onRead} onClose={() => setScanner(false)} />
           ) : null}
           {resolving ? (
-            <p role="status">Confirmando as permissões do convite…</p>
+            <p role="status">Validando token e liberando prontuário…</p>
           ) : null}
           {error ? <p role="alert">{error.message}</p> : null}
           {resolution ? (
@@ -189,12 +205,11 @@ export function InvitationExperience({
                 ctx.setTemporary(null);
               }}
             >
-              Usar outro convite
+              Inserir outro token
             </button>
           ) : null}
           <p className="muted small">
-            Ao recarregar uma consulta temporária, será necessário abrir
-            novamente o convite. O prazo original não é renovado.
+            O token expira após 2 horas. Caso a consulta seja recarregada após o vencimento, solicite um novo token ao paciente.
           </p>
           <Link href={`${ctx.base}/patients`} className="text-link">
             Voltar à carteira

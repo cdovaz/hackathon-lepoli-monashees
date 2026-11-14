@@ -7,6 +7,7 @@ import Svg, {
   Circle,
   Text as SvgText,
 } from 'react-native-svg';
+import { theme } from '../theme/colors';
 
 export interface DataPoint {
   date: string;
@@ -38,7 +39,7 @@ export const BiomarkerChart: React.FC<BiomarkerChartProps> = ({
   refMin,
   refMax,
   unit,
-  lineColor = '#0D9488',
+  lineColor = theme.colors.primary,
   width = 320,
   height = 190,
   allowPeriodSelection = true,
@@ -196,13 +197,13 @@ export const BiomarkerChart: React.FC<BiomarkerChartProps> = ({
 
       {/* SVG Principal */}
       <Svg width={width} height={height}>
-        {/* Faixa de Referência Ideal */}
+        {/* Faixa de Referência Ideal (DESIGN.md: brand-600 #087C73 @ 8%) */}
         <Rect
           x={padLeft}
           y={refBandTop}
           width={chartW}
           height={refBandHeight}
-          fill="rgba(16, 185, 129, 0.12)"
+          fill="rgba(8, 124, 115, 0.08)"
           rx={6}
         />
 
@@ -212,14 +213,14 @@ export const BiomarkerChart: React.FC<BiomarkerChartProps> = ({
           y1={refMaxY}
           x2={padLeft + chartW}
           y2={refMaxY}
-          stroke="rgba(16, 185, 129, 0.5)"
+          stroke="rgba(8, 124, 115, 0.35)"
           strokeDasharray="4,4"
           strokeWidth={1}
         />
         <SvgText
           x={padLeft - 6}
           y={refMaxY + 3}
-          fill="#10B981"
+          fill="#087C73"
           fontSize={10}
           fontWeight="700"
           textAnchor="end"
@@ -235,14 +236,14 @@ export const BiomarkerChart: React.FC<BiomarkerChartProps> = ({
               y1={refMinY}
               x2={padLeft + chartW}
               y2={refMinY}
-              stroke="rgba(16, 185, 129, 0.5)"
+              stroke="rgba(8, 124, 115, 0.35)"
               strokeDasharray="4,4"
               strokeWidth={1}
             />
             <SvgText
               x={padLeft - 6}
               y={refMinY + 3}
-              fill="#10B981"
+              fill="#087C73"
               fontSize={10}
               fontWeight="700"
               textAnchor="end"
@@ -378,12 +379,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   periodChipActive: {
-    backgroundColor: '#0D9488',
+    backgroundColor: theme.colors.primary,
   },
   periodChipText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
+    color: theme.colors.textSecondary,
   },
   periodChipTextActive: {
     color: '#FFFFFF',
@@ -397,19 +398,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   correlationToggleActive: {
-    backgroundColor: '#E11D48',
+    backgroundColor: theme.colors.accentDanger,
     borderColor: '#BE123C',
   },
   correlationToggleText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#BE123C',
+    color: theme.colors.accentDanger,
   },
   correlationToggleTextActive: {
     color: '#FFFFFF',
   },
   tooltipCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: theme.colors.textPrimary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
   tooltipLab: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#2DD4BF',
+    color: theme.colors.brandDot,
   },
   tooltipValue: {
     fontSize: 13,

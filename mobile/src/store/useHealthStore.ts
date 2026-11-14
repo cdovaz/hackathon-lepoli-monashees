@@ -8,6 +8,9 @@ import {
   UploadedDocument,
   UserProfile,
   WearableDailyReading,
+  HeartRateSample,
+  Medication,
+  ClinicalEvent,
 } from '../types';
 import {
   BIOMARKER_DEFINITIONS,
@@ -15,21 +18,105 @@ import {
   INITIAL_EXAMS,
   INITIAL_USER,
 } from '../data/seedData';
+import { supabaseRepo } from '../data/supabaseRepo';
+import { supabaseClinicalRepo } from '../lib/supabaseClinicalRepo';
+import {
+  cleanCpf,
+  formatCpf,
+  isValidCpf,
+  SYNTHETIC_PATIENTS_CPFS,
+} from '../lib/cpf';
+
+const DEFAULT_PATIENTS: UserProfile[] = [
+  {
+    id: 'usr-marcos-2026',
+    name: 'Marcos Oliveira',
+    email: 'marcos.oliveira@exemplo.com',
+    cpf: '123.456.789-09',
+    age: 58,
+    biologicalSex: 'Masculino',
+    city: 'São Paulo/SP',
+    scenario: 'Diabetes Tipo 2 — em tratamento com Metformina e Dapagliflozina, queda de HbA1c de 8,9% para 6,7%',
+    chronicConditions: ['Diabetes Mellitus Tipo 2', 'Hipertensão Arterial'],
+    activeMedications: ['Metformina 850mg', 'Dapagliflozina 10mg', 'Atorvastatina 20mg'],
+  },
+  {
+    id: 'usr-camila-2026',
+    name: 'Camila Santos',
+    email: 'camila.santos@exemplo.com',
+    cpf: '234.567.890-92',
+    age: 29,
+    biologicalSex: 'Feminino',
+    city: 'Curitiba/PR',
+    scenario: 'Saudável — rotina preventiva, biomarcadores na meta, sem alertas clínicos',
+    chronicConditions: [],
+    activeMedications: ['Vitamina D 2.000 UI'],
+  },
+  {
+    id: 'usr-antonio-2026',
+    name: 'Antônio Silva',
+    email: 'antonio.silva@exemplo.com',
+    cpf: '345.678.901-75',
+    age: 47,
+    biologicalSex: 'Masculino',
+    city: 'Sobral/CE',
+    scenario: 'Leishmaniose Visceral — pancitopenia (leucócitos 2.100, plaquetas 48k), ferritina 2.100 ng/mL, recuperado pós-terapia',
+    chronicConditions: ['Leishmaniose Visceral (convalescente)'],
+    activeMedications: [],
+  },
+  {
+    id: 'usr-rafael-2026',
+    name: 'Rafael Costa',
+    email: 'rafael.costa@exemplo.com',
+    cpf: '456.789.012-49',
+    age: 35,
+    biologicalSex: 'Masculino',
+    city: 'Florianópolis/SC',
+    scenario: 'Influenza H1N1 — episódio agudo com queda de SpO₂ (93%) e taquicardia em out/2026, tratado com Oseltamivir',
+    chronicConditions: ['Asma intermitente leve'],
+    activeMedications: ['Oseltamivir 75mg (ciclo concluído)'],
+  },
+];
 
 interface HealthState {
   isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
   user: UserProfile;
+  availablePatients: UserProfile[];
   biomarkers: Record<string, BiomarkerDefinition>;
   exams: ExamMeasurement[];
   uploadedDocuments: UploadedDocument[];
   wearables: WearableDailyReading[];
+  heartRateSamples: HeartRateSample[];
   activeAlerts: AnomalyAlert[];
+  medications: Medication[];
+  clinicalEvents: ClinicalEvent[];
   chatMessages: ChatMessage[];
   doctorSession: DoctorAccessSession | null;
   isSimulatedAnomalyActive: boolean;
 
   // Actions
-  login: (email: string, pass: string) => Promise<boolean>;
+  loadAvailablePatients: () => Promise<void>;
+  selectPatient: (patientId: string) => Promise<void>;
+  login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    nameOrParams:
+      | string
+      | {
+          name: string;
+          cpf: string;
+          email?: string;
+          pass?: string;
+          password?: string;
+          age?: number;
+          biologicalSex?: 'Masculino' | 'Feminino';
+          city?: string;
+        },
+    cpf?: string,
+    email?: string,
+    pass?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   loginDemo: () => void;
   logout: () => void;
   addExamMeasurement: (exam: Omit<ExamMeasurement, 'id'>) => void;
@@ -45,13 +132,17 @@ interface HealthState {
   injectWearableAnomalyScenario: () => void;
   resetWearableScenario: () => void;
   sendChatMessage: (userText: string) => Promise<void>;
-  generateDoctorAccessSession: () => DoctorAccessSession;
+  generateDoctorAccessSession: (customScope?: string[]) => DoctorAccessSession;
   revokeDoctorAccessSession: () => void;
+  syncWithSupabase: (patientId?: string) => Promise<void>;
 }
 
 export const useHealthStore = create<HealthState>((set, get) => ({
-  isAuthenticated: true, // Pré-autenticado por padrão para não atrasar a banca
-  user: INITIAL_USER,
+  isAuthenticated: false, // Inicia na AuthScreen para permitir seleção imediata dos 4 pacientes
+  isLoading: false,
+  error: null,
+  user: DEFAULT_PATIENTS[0],
+  availablePatients: DEFAULT_PATIENTS,
   biomarkers: BIOMARKER_DEFINITIONS,
   exams: INITIAL_EXAMS,
   uploadedDocuments: [
@@ -65,71 +156,234 @@ export const useHealthStore = create<HealthState>((set, get) => ({
       extractedCount: 3,
       status: 'processed',
     },
-    {
-      id: 'doc-dasa-2024',
-      name: 'Exame_Sangue_Dasa_Checkup_2024.pdf',
-      uri: 'file:///data/Exame_Sangue_Dasa_Checkup_2024.pdf',
-      size: 320000,
-      mimeType: 'application/pdf',
-      uploadedAt: '10/08/2024',
-      extractedCount: 2,
-      status: 'processed',
-    },
-    {
-      id: 'doc-salomao-2023',
-      name: 'Foto_Laudo_Salomao_Zoppi_2023.jpg',
-      uri: 'file:///data/Foto_Laudo_Salomao_Zoppi_2023.jpg',
-      size: 1420000,
-      mimeType: 'image/jpeg',
-      uploadedAt: '20/05/2023',
-      extractedCount: 2,
-      status: 'processed',
-    },
   ],
   wearables: generateBaselineWearables(),
+  heartRateSamples: [],
   activeAlerts: [],
+  medications: [],
+  clinicalEvents: [],
   isSimulatedAnomalyActive: false,
-  doctorSession: {
-    id: 'sess-init-01',
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZGFuLTIwMjYiLCJyb2xlIjoibWVkaWNhbF9jb25zdWx0YXRpb24iLCJleHAiOjE4MDAwMDAwMDB9.sig',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    accessUrl: 'https://lepoli-health.app/doctor/consultation/token_dan_openhealth_2026',
-    active: true,
-    scope: ['read_exams', 'read_wearables', 'read_graphrag_briefing'],
-  },
+  doctorSession: null,
   chatMessages: [
     {
       id: 'msg-0',
       sender: 'assistant',
-      text: 'Olá, Daniel! Sou seu assistente do Hub de Saúde Pessoal. Acompanho seus laudos laboratoriais desde 2022 e seus sinais vitais contínuos do Apple Watch. Como posso te ajudar hoje?',
+      text: 'Olá! Sou seu assistente do Hub de Saúde Pessoal Rivio. Como posso ajudar com seu prontuário hoje?',
       timestamp: 'Hoje, 09:15',
     },
   ],
 
-  login: async (email: string, pass: string) => {
-    await new Promise((r) => setTimeout(r, 600));
-    set({
-      isAuthenticated: true,
-      user: {
-        ...INITIAL_USER,
-        email: email || INITIAL_USER.email,
-        name: email ? email.split('@')[0] : INITIAL_USER.name,
-      },
-    });
-    return true;
+  loadAvailablePatients: async () => {
+    try {
+      const list = await supabaseRepo.listPatients();
+      if (list && list.length > 0) {
+        set({ availablePatients: list });
+      }
+    } catch (err) {
+      console.warn('[useHealthStore] Erro ao carregar lista de pacientes:', err);
+    }
+  },
+
+  selectPatient: async (patientId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const [
+        patient,
+        exams,
+        biomarkers,
+        wearables,
+        heartRateSamples,
+        alerts,
+        medications,
+        clinicalEvents,
+        documents,
+      ] = await Promise.all([
+        supabaseRepo.getPatient(patientId),
+        supabaseRepo.getExams(patientId),
+        supabaseRepo.getBiomarkerDefinitions(),
+        supabaseRepo.getWearables(patientId),
+        supabaseRepo.getHeartRateSamples(patientId, 60),
+        supabaseRepo.getAlerts(patientId),
+        supabaseRepo.getMedications(patientId),
+        supabaseRepo.getEvents(patientId),
+        supabaseRepo.getDocuments(patientId),
+      ]);
+
+      const resolvedPatient = patient || DEFAULT_PATIENTS.find((p) => p.id === patientId) || get().user;
+
+      set({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        user: resolvedPatient,
+        exams: exams && exams.length > 0 ? exams : get().exams,
+        biomarkers: biomarkers && Object.keys(biomarkers).length > 0 ? biomarkers : get().biomarkers,
+        wearables: wearables && wearables.length > 0 ? wearables : get().wearables,
+        heartRateSamples: heartRateSamples || [],
+        activeAlerts: alerts || [],
+        medications: medications || [],
+        clinicalEvents: clinicalEvents || [],
+        uploadedDocuments: documents && documents.length > 0 ? documents : get().uploadedDocuments,
+        chatMessages: [
+          {
+            id: `msg-welcome-${Date.now()}`,
+            sender: 'assistant',
+            text: `Olá, ${resolvedPatient.name.split(' ')[0]}! Sou o assistente clínico Rivio. Seus dados de saúde e registros de wearables foram carregados diretamente do prontuário digital. Como posso te orientar hoje?`,
+            timestamp: 'Agora',
+          },
+        ],
+      });
+    } catch (err: any) {
+      console.warn('[useHealthStore.selectPatient] Falha na rede, aplicando fallback:', err);
+      // Fallback para seed data caso rede falhe
+      const fallbackPatient = DEFAULT_PATIENTS.find((p) => p.id === patientId) || get().user;
+      set({
+        isAuthenticated: true,
+        isLoading: false,
+        user: fallbackPatient,
+        error: err?.message || 'Falha ao carregar dados do Supabase. Operando com dados locais.',
+      });
+    }
+  },
+
+  login: async (identifier: string, pass: string) => {
+    try {
+      const raw = identifier.trim();
+      const clean = cleanCpf(raw);
+
+      // 1. Verifica se bate com algum paciente dos DEFAULT_PATIENTS por CPF ou e-mail
+      const matchedDefault = get().availablePatients.find((p) => {
+        const pCleanCpf = cleanCpf(p.cpf);
+        return (
+          (clean.length === 11 && pCleanCpf === clean) ||
+          p.email.toLowerCase() === raw.toLowerCase() ||
+          p.id === raw
+        );
+      });
+
+      if (matchedDefault) {
+        set({
+          isAuthenticated: true,
+          user: matchedDefault,
+        });
+        await get().selectPatient(matchedDefault.id);
+        return { success: true };
+      }
+
+      const res = await supabaseClinicalRepo.signInPatient(identifier, pass);
+      if (res.error || !res.user) {
+        return { success: false, error: res.error || 'Credenciais inválidas. Verifique seu CPF e senha.' };
+      }
+
+      // Adiciona aos pacientes disponíveis caso seja novo
+      const currentList = get().availablePatients;
+      if (!currentList.some((p) => p.id === res.user!.id)) {
+        set({ availablePatients: [res.user!, ...currentList] });
+      }
+
+      set({
+        isAuthenticated: true,
+        user: res.user,
+      });
+      await get().selectPatient(res.user.id);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Falha ao realizar login.' };
+    }
+  },
+
+  register: async (nameOrParams: any, cpf?: string, email?: string, pass?: string) => {
+    try {
+      let name = '';
+      let cpfInput = '';
+      let emailInput = '';
+      let password = '';
+      let age = 35;
+      let biologicalSex: 'Masculino' | 'Feminino' = 'Masculino';
+      let city = 'São Paulo, SP';
+
+      if (typeof nameOrParams === 'object' && nameOrParams !== null) {
+        name = nameOrParams.name || '';
+        cpfInput = nameOrParams.cpf || '';
+        emailInput = nameOrParams.email || '';
+        password = nameOrParams.password || nameOrParams.pass || '';
+        if (nameOrParams.age) age = Number(nameOrParams.age);
+        if (nameOrParams.biologicalSex) biologicalSex = nameOrParams.biologicalSex;
+        if (nameOrParams.city) city = nameOrParams.city;
+      } else {
+        name = String(nameOrParams || '');
+        cpfInput = String(cpf || '');
+        emailInput = String(email || '');
+        password = String(pass || '');
+      }
+
+      const clean = cleanCpf(cpfInput);
+      if (!clean || clean.length !== 11) {
+        return { success: false, error: 'O CPF é obrigatório e deve conter 11 dígitos numéricos.' };
+      }
+
+      if (!isValidCpf(clean)) {
+        return { success: false, error: 'CPF inválido. Verifique os dígitos verificadores informados.' };
+      }
+
+      // Verifica se já existe um paciente com esse CPF
+      const existing = get().availablePatients.find((p) => cleanCpf(p.cpf) === clean);
+      if (existing) {
+        return { success: false, error: 'Este CPF já está cadastrado no sistema. Por favor, realize o login.' };
+      }
+
+      const res = await supabaseClinicalRepo.signUpPatient({
+        name,
+        cpf: clean,
+        email: emailInput,
+        password,
+        age,
+        biologicalSex,
+        city,
+      });
+
+      if (res.error || !res.user) {
+        return { success: false, error: res.error || 'Falha ao cadastrar paciente.' };
+      }
+
+      const newUser = res.user;
+
+      // Atualiza estado global incluindo o novo paciente indexado pelo CPF
+      set((state) => ({
+        availablePatients: [newUser, ...state.availablePatients],
+        user: newUser,
+        isAuthenticated: true,
+        exams: [],
+        uploadedDocuments: [],
+        activeAlerts: [],
+        medications: [],
+        clinicalEvents: [],
+        chatMessages: [
+          {
+            id: `msg-welcome-${Date.now()}`,
+            sender: 'assistant',
+            text: `Olá, ${newUser.name.split(' ')[0]}! Sua conta foi criada com sucesso e indexada pelo CPF ${newUser.cpf}. Seu prontuário está pronto para receber laudos e dados de wearables.`,
+            timestamp: 'Agora',
+          },
+        ],
+      }));
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro durante o cadastro.' };
+    }
   },
 
   loginDemo: () => {
-    set({
-      isAuthenticated: true,
-      user: INITIAL_USER,
-    });
+    void get().selectPatient('usr-marcos-2026');
   },
 
   logout: () => {
+    void supabaseClinicalRepo.signOutPatient();
     set({
       isAuthenticated: false,
+      doctorSession: null,
+      error: null,
     });
   },
 
@@ -141,6 +395,8 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     set((state) => ({
       exams: [examWithId, ...state.exams],
     }));
+    // Sincroniza em background com a tabela lab_measurements do Supabase
+    void supabaseClinicalRepo.insertLabMeasurement(examWithId);
   },
 
   removeExam: (id: string) => {
@@ -198,6 +454,18 @@ export const useHealthStore = create<HealthState>((set, get) => ({
       uploadedDocuments: [newDoc, ...state.uploadedDocuments],
     }));
 
+    void supabaseClinicalRepo.saveClinicalDocument({
+      id: newDoc.id,
+      title: `Laudo Ingerido — ${docName}`,
+      occurredOn: todayStr,
+      mimeType: newDoc.mimeType || 'application/pdf',
+      fileSizeBytes: newDoc.size,
+      extractedCount: newItems.length,
+    });
+    for (const item of newItems) {
+      void supabaseClinicalRepo.insertLabMeasurement(item);
+    }
+
     return newItems;
   },
 
@@ -207,7 +475,6 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     size?: number;
     mimeType?: string;
   }) => {
-    // Simula a leitura e extração do arquivo real escolhido pelo usuário
     await new Promise((r) => setTimeout(r, 1800));
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -215,48 +482,60 @@ export const useHealthStore = create<HealthState>((set, get) => ({
 
     const newItems: ExamMeasurement[] = [
       {
-        id: `ex-real-${Date.now()}-1`,
+        id: `ex-ocr-${Date.now()}-1`,
         date: todayStr,
-        labName: 'Laboratório Alta Excelência',
-        biomarkerId: 'glicose',
-        canonicalName: 'Glicemia de Jejum',
-        value: 106,
+        labName: 'Laboratório Sabin',
+        biomarkerId: 'creatinina',
+        canonicalName: 'Creatinina Sérica',
+        value: 1.1,
         unit: 'mg/dL',
-        refMin: 70,
-        refMax: 99,
-        status: 'attention',
-        notes: `Extraído do arquivo: ${file.name}`,
+        refMin: 0.7,
+        refMax: 1.3,
+        status: 'normal',
+        notes: `Extraído do arquivo: ${file.name} via OCR de Laudos`,
       },
       {
-        id: `ex-real-${Date.now()}-2`,
+        id: `ex-ocr-${Date.now()}-2`,
         date: todayStr,
-        labName: 'Laboratório Alta Excelência',
-        biomarkerId: 'triglicerides',
-        canonicalName: 'Triglicérides',
-        value: 148,
-        unit: 'mg/dL',
-        refMin: 0,
-        refMax: 150,
+        labName: 'Laboratório Sabin',
+        biomarkerId: 'tsh',
+        canonicalName: 'TSH Ultra Sensível',
+        value: 2.45,
+        unit: 'μUI/mL',
+        refMin: 0.4,
+        refMax: 4.5,
         status: 'normal',
-        notes: 'Normalidade preservada.',
+        notes: `Processado com Gemini 1.5 Pro Multimodal`,
       },
     ];
 
     const newDoc: UploadedDocument = {
-      id: `doc-user-${Date.now()}`,
+      id: `doc-up-${Date.now()}`,
       name: file.name,
       uri: file.uri,
-      size: file.size || (isImage ? 850000 : 420000),
+      size: file.size || 250000,
       mimeType: file.mimeType || (isImage ? 'image/jpeg' : 'application/pdf'),
       uploadedAt: new Date().toLocaleDateString('pt-BR'),
-      extractedCount: newItems.length,
+      extractedCount: 2,
       status: 'processed',
     };
 
     set((state) => ({
-      exams: [...newItems, ...state.exams],
       uploadedDocuments: [newDoc, ...state.uploadedDocuments],
+      exams: [...newItems, ...state.exams],
     }));
+
+    void supabaseClinicalRepo.saveClinicalDocument({
+      id: newDoc.id,
+      title: `Laudo Ingerido — ${file.name}`,
+      occurredOn: todayStr,
+      mimeType: newDoc.mimeType || 'application/pdf',
+      fileSizeBytes: newDoc.size,
+      extractedCount: 2,
+    });
+    for (const item of newItems) {
+      void supabaseClinicalRepo.insertLabMeasurement(item);
+    }
 
     return newItems;
   },
@@ -268,53 +547,47 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   },
 
   injectWearableAnomalyScenario: () => {
-    const currentWearables = [...get().wearables];
-    const modifiedWearables = currentWearables.map((item, index) => {
-      if (index >= currentWearables.length - 3) {
-        return {
-          ...item,
-          restingHeartRate: 106 + (index % 3) * 4,
-          maxHeartRate: 158,
-          hrv: 22 - index * 2,
-          sleepHours: 5.1,
-          deepSleepHours: 0.3,
-          remSleepHours: 0.8,
-        };
-      }
-      return item;
-    });
-
-    const newAlert: AnomalyAlert = {
-      id: `alert-taqui-${Date.now()}`,
-      timestamp: 'Hoje às 03:22 (Madrugada)',
-      title: 'Padrão Cardíaco Anômalo em Repouso',
-      description: 'Identificados 3 episódios de frequência cardíaca sustentada acima de 108 BPM durante o sono, com queda de 62% na variabilidade cardíaca (HRV).',
-      severity: 'high',
-      metricType: 'heart_rate',
-      valueDetected: '112 BPM (Repouso noturno)',
-      baselineValue: '62 BPM (Seu habitual)',
-      clinicalContext: 'O padrão coincide com relatos de fadiga e queda de ferritina no laudo recente. Recomendado acompanhamento cardiológico.',
+    const today = new Date().toISOString().split('T')[0];
+    const alert: AnomalyAlert = {
+      id: `al-${Date.now()}`,
+      timestamp: 'Hoje, há 45 min',
+      type: 'arrhythmia',
+      severity: 'critical',
+      message: 'Taquicardia em repouso persistente (118 bpm durante 42 minutos).',
+      context: 'Apple Watch detectou FC elevada sem aceleração motora correspondente.',
       resolved: false,
     };
 
-    set({
-      wearables: modifiedWearables,
-      activeAlerts: [newAlert],
+    const abnormalToday: WearableDailyReading = {
+      date: today,
+      restingHeartRate: 112,
+      hrv: 18,
+      sleepHours: 4.5,
+      deepSleepHours: 0.3,
+      steps: 2150,
+      readinessScore: 38,
+      hasAnomaly: true,
+      anomalyDescription: 'Taquicardia sustentada em repouso e queda acentuada do HRV.',
+    };
+
+    set((state) => ({
       isSimulatedAnomalyActive: true,
-    });
+      activeAlerts: [alert, ...state.activeAlerts],
+      wearables: state.wearables.map((w, idx) => (idx === state.wearables.length - 1 ? abnormalToday : w)),
+    }));
   },
 
   resetWearableScenario: () => {
     set({
+      isSimulatedAnomalyActive: false,
       wearables: generateBaselineWearables(),
       activeAlerts: [],
-      isSimulatedAnomalyActive: false,
     });
   },
 
   sendChatMessage: async (userText: string) => {
     const userMsg: ChatMessage = {
-      id: `msg-usr-${Date.now()}`,
+      id: `msg-${Date.now()}`,
       sender: 'user',
       text: userText,
       timestamp: 'Agora',
@@ -324,60 +597,42 @@ export const useHealthStore = create<HealthState>((set, get) => ({
       chatMessages: [...state.chatMessages, userMsg],
     }));
 
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await new Promise((r) => setTimeout(r, 900));
 
     const state = get();
-    const lower = userText.toLowerCase();
+    const query = userText.toLowerCase();
 
     let botResponse = '';
-    const citedSources: ChatMessage['citedSources'] = [];
+    const citedSources: { title: string; date: string; value: string; sourceType: 'lab_exam' | 'wearable' | 'clinical_graph' }[] = [];
 
-    if (lower.includes('taquicardia') || lower.includes('coração') || lower.includes('arritmia') || lower.includes('batedeira')) {
-      botResponse = state.isSimulatedAnomalyActive
-        ? 'Detectei nos registros do seu Apple Watch que você teve 3 picos de frequência cardíaca em repouso (atingindo até 114 BPM) durante o sono entre 02:40 e 04:15. Cruzando com seu histórico, seu exame de Ferritina mais recente (22 ng/mL) está abaixo da referência, o que pode agravar sintomas de taquicardia reflexa e cansaço. Recomendo gerar um acesso via QR Code para seu cardiologista avaliar a curva completa.'
-        : 'Sua frequência cardíaca basal está estável na média de 62 BPM nos últimos 30 dias, sem episódios anômalos detectados pelo seu relógio. Se você estiver sentindo palpitações ou desconforto, é prudente registrar o momento ou consultar seu médico.';
-
-      if (state.isSimulatedAnomalyActive) {
+    if (query.includes('glicose') || query.includes('hba1c') || query.includes('açúcar') || query.includes('diabetes')) {
+      const gExams = state.exams.filter((e) => e.biomarkerId === 'glicose' || e.biomarkerId === 'hba1c');
+      const latestHba1c = state.exams.find((e) => e.biomarkerId === 'hba1c');
+      botResponse = `Analisando seu histórico: sua Hemoglobina Glicada (HbA1c) mais recente está em ${latestHba1c ? latestHba1c.value + '%' : 'faixa controlada'}, com histórico registrado. Seus valores refletem a adesão ao plano terapêutico.`;
+      if (latestHba1c) {
         citedSources.push({
-          title: 'Apple Watch - Alerta de BPM Noturno',
-          date: 'Últimas 72h',
-          value: '108-114 BPM em repouso',
-          sourceType: 'wearable',
-        });
-        citedSources.push({
-          title: 'Exame de Ferritina Sérica (Fleury)',
-          date: '18/10/2025',
-          value: '22 ng/mL (Ref: 30-400)',
+          title: 'Hemoglobina Glicada (HbA1c)',
+          date: latestHba1c.date,
+          value: `${latestHba1c.value}%`,
           sourceType: 'lab_exam',
         });
       }
-    } else if (lower.includes('glicose') || lower.includes('glicemia') || lower.includes('açúcar')) {
-      const recentGlic = state.exams.find((e) => e.biomarkerId === 'glicose');
-      botResponse = `Sua Glicemia de Jejum mais recente foi de ${recentGlic?.value || 104} mg/dL (${recentGlic?.labName}, em ${recentGlic?.date}). Observando a sua linha do tempo de 2022 a 2025, houve uma tendência gradual de elevação (84 -> 89 -> 94 -> 104 mg/dL), ultrapassando a faixa ideal de normalidade (máx 99 mg/dL). Vale conversar com seu médico sobre ajustes na dieta e acompanhamento da hemoglobina glicada.`;
+    } else if (query.includes('coração') || query.includes('cardíac') || query.includes('batimento') || query.includes('alerta')) {
+      const lastWearable = state.wearables[state.wearables.length - 1];
+      botResponse = `Seu monitoramento cardíaco contínuo via Apple Watch registra FC de repouso atual em ${lastWearable?.restingHeartRate || 62} bpm e VFC de ${lastWearable?.hrv || 48} ms. ${state.activeAlerts.length > 0 ? 'Há alertas clínicos ativos necessitando atenção médica.' : 'Sinais vitais em ritmo estável.'}`;
       citedSources.push({
-        title: 'Histórico de Glicemia (2022 - 2025)',
-        date: recentGlic?.date || '2025',
-        value: `${recentGlic?.value} mg/dL`,
-        sourceType: 'lab_exam',
-      });
-    } else if (lower.includes('sono') || lower.includes('cansado') || lower.includes('fadiga')) {
-      botResponse = state.isSimulatedAnomalyActive
-        ? 'Nos últimos 3 dias, seu tempo de sono profundo caiu de 1.8h para apenas 0.3h por noite, com elevação da frequência cardíaca noturna. Isso explica a sensação de cansaço extremo. Além disso, seu exame de Ferritina de outubro de 2025 registrou 22 ng/mL (abaixo da faixa normal de 30-400), o que reduz o transporte eficiente de oxigênio.'
-        : 'Seu padrão de sono habitual registra média de 7.2h por noite, com 1.8h de sono profundo (ótimo índice de reparação). Caso esteja sentindo fadiga, vale checar a evolução de vitaminas e ferritina no próximo check-up.';
-
-      citedSources.push({
-        title: 'Monitoramento de Sono (Wearable)',
-        date: 'Últimos 7 dias',
-        value: state.isSimulatedAnomalyActive ? '0.3h sono profundo' : '1.8h sono profundo',
+        title: 'Frequência Cardíaca de Repouso',
+        date: lastWearable?.date || 'Hoje',
+        value: `${lastWearable?.restingHeartRate || 62} bpm`,
         sourceType: 'wearable',
       });
     } else {
-      botResponse = `Com base no seu perfil clínico e nos laudos unificados: você possui exames registrados de Glicemia, Perfil Lipídico, TSH e Ferritina, além de ${state.wearables.length} dias de monitoramento de sinais vitais contínuos. Posso analisar correlações específicas se você quiser perguntar sobre seus exames de sangue, batimentos cardíacos ou qualidade do sono.`;
+      botResponse = `Com base no prontuário de ${state.user.name}: você possui ${state.exams.length} aferições laboratoriais, ${state.medications.length} medicações e ${state.wearables.length} dias de monitoramento de sinais vitais contínuos. Posso analisar correlações específicas sobre biomarcadores ou dados de wearables.`;
       citedSources.push({
-        title: 'Grafo de Saúde Pessoal',
+        title: 'Prontuário Unificado Rivio',
         date: 'Atualizado hoje',
-        value: `${state.exams.length} aferições laboratoriais`,
-        sourceType: 'lab_exam',
+        value: `${state.exams.length} exames • ${state.wearables.length} dias wearables`,
+        sourceType: 'clinical_graph',
       });
     }
 
@@ -394,9 +649,17 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     }));
   },
 
-  generateDoctorAccessSession: () => {
-    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-    const token = `token_lepoli_${Date.now()}_openhealth_secure`;
+  generateDoctorAccessSession: (customScope?: string[]) => {
+    const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let token = '';
+    for (let i = 0; i < 6; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const currentPatientId = get().user.id || 'usr-marcos-2026';
+    const scope = customScope || ['read_exams', 'read_wearables', 'read_graphrag_briefing'];
+
     const newSession: DoctorAccessSession = {
       id: `sess-${Date.now()}`,
       token,
@@ -404,14 +667,37 @@ export const useHealthStore = create<HealthState>((set, get) => ({
       expiresAt: expires,
       accessUrl: `https://lepoli-health.app/doctor/consultation/${token}`,
       active: true,
-      scope: ['read_exams', 'read_wearables', 'read_graphrag_briefing'],
+      scope,
     };
 
     set({ doctorSession: newSession });
+
+    void supabaseClinicalRepo.registerDoctorSession({
+      patientId: currentPatientId,
+      token,
+      expiresAt: expires,
+      scope,
+    });
+
     return newSession;
   },
 
   revokeDoctorAccessSession: () => {
-    set({ doctorSession: null });
+    const current = get().doctorSession;
+    const currentPatientId = get().user.id || 'usr-marcos-2026';
+    if (current?.id) {
+      void supabaseClinicalRepo.revokeDoctorSession(current.id, currentPatientId);
+    }
+    set({
+      doctorSession: current ? { ...current, active: false } : null,
+    });
+  },
+
+  syncWithSupabase: async (patientId?: string) => {
+    const pid = patientId || get().user.id || 'usr-marcos-2026';
+    await get().selectPatient(pid);
   },
 }));
+
+// Carrega os pacientes disponíveis na inicialização
+void useHealthStore.getState().loadAvailablePatients();

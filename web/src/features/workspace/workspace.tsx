@@ -22,6 +22,7 @@ import { Sources } from "@/features/evidence/Sources";
 import { EvidenceInspector } from "@/features/evidence/EvidenceInspector";
 import { Review } from "./review";
 import { DraftNotes } from "./draft-notes";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const Evolution = dynamic(() => import("@/features/evolution/evolution"), {
   ssr: false,
@@ -153,6 +154,32 @@ export function Workspace({
     client.removeQueries({ queryKey: ["clinical"] });
     setGeneration((x) => x + 1);
   };
+
+  // Supabase Realtime (Fase 3): Sincronização instantânea de anomalias disparadas no Mobile
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const channel = supabase
+      .channel("clinical_live_updates")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "clinical_alerts" },
+        () => {
+          refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "wearable_time_series" },
+        () => {
+          refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
   async function refreshData() {
     if (refreshing || !snapshot) return;
     const request = new AbortController();
