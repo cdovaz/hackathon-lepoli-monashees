@@ -265,7 +265,7 @@ export const PatientHubScreen: React.FC = () => {
               Fotografe laudos laboratoriais, receitas ou exames impressos
             </Text>
           </View>
-          <ChevronRight color="#FFFFFF" size={22} />
+          <ChevronRight color={rivio.palette.blue} size={22} />
         </TouchableOpacity>
 
         {/* BOTÃO 2: Upload de Laudo */}
@@ -296,11 +296,11 @@ export const PatientHubScreen: React.FC = () => {
         >
           <View style={styles.actionIconWearableWrap}>
             {wearableLoading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={rivio.palette.purple} size="small" />
             ) : wearableSyncSuccess ? (
               <CheckCircle2 color="#FFFFFF" size={24} />
             ) : (
-              <Watch color="#FFFFFF" size={24} />
+              <Watch color={rivio.palette.purple} size={24} />
             )}
           </View>
           <View style={styles.actionTextsWrap}>
@@ -369,7 +369,7 @@ export const PatientHubScreen: React.FC = () => {
             {/* Header do Popup */}
             <View style={styles.popupHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <KeyRound color={rivio.brand[600]} size={22} />
+                <KeyRound color={rivio.palette.blue} size={22} />
                 <Text style={styles.popupTitle}>Token de Acesso Médico</Text>
               </View>
               <TouchableOpacity
@@ -388,7 +388,7 @@ export const PatientHubScreen: React.FC = () => {
             <View style={styles.tokenBox}>
               <View style={styles.tokenStatusRow}>
                 <View style={styles.openHealthBadge}>
-                  <ShieldCheck color={theme.colors.primary} size={14} />
+                  <ShieldCheck color={rivio.palette.blue} size={14} />
                   <Text style={styles.openHealthText}>Open Health • 2h</Text>
                 </View>
 
@@ -399,11 +399,11 @@ export const PatientHubScreen: React.FC = () => {
                       ? { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }
                       : timeLeft === 'Token Expirado'
                       ? { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }
-                      : { backgroundColor: '#073E3E', borderColor: '#075E59' },
+                      : { backgroundColor: 'rgba(102, 148, 255, 0.16)', borderColor: 'rgba(102, 148, 255, 0.35)' },
                   ]}
                 >
                   <Clock
-                    color={!isSessionActive ? '#DC2626' : timeLeft === 'Token Expirado' ? '#D97706' : rivio.brand[400]}
+                    color={!isSessionActive ? '#DC2626' : timeLeft === 'Token Expirado' ? '#D97706' : rivio.palette.blue}
                     size={12}
                   />
                   <Text
@@ -413,7 +413,7 @@ export const PatientHubScreen: React.FC = () => {
                         ? { color: '#DC2626' }
                         : timeLeft === 'Token Expirado'
                         ? { color: '#D97706' }
-                        : { color: rivio.brand[400] },
+                        : { color: rivio.palette.blue },
                     ]}
                   >
                     {timeLeft}
@@ -454,8 +454,8 @@ export const PatientHubScreen: React.FC = () => {
                 <Switch
                   value={shareExams}
                   onValueChange={setShareExams}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryHighlight }}
-                  thumbColor={shareExams ? theme.colors.primary : theme.colors.surfaceSubtle}
+                  trackColor={{ false: '#CBD5E8', true: rivio.palette.blue }}
+                  thumbColor="#FFFFFF"
                 />
               </View>
               <View style={styles.toggleRow}>
@@ -463,8 +463,8 @@ export const PatientHubScreen: React.FC = () => {
                 <Switch
                   value={shareWearables}
                   onValueChange={setShareWearables}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryHighlight }}
-                  thumbColor={shareWearables ? theme.colors.primary : theme.colors.surfaceSubtle}
+                  trackColor={{ false: '#CBD5E8', true: rivio.palette.blue }}
+                  thumbColor="#FFFFFF"
                 />
               </View>
               <View style={[styles.toggleRow, { borderBottomWidth: 0 }]}>
@@ -472,8 +472,8 @@ export const PatientHubScreen: React.FC = () => {
                 <Switch
                   value={shareAlerts}
                   onValueChange={setShareAlerts}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryHighlight }}
-                  thumbColor={shareAlerts ? theme.colors.primary : theme.colors.surfaceSubtle}
+                  trackColor={{ false: '#CBD5E8', true: rivio.palette.blue }}
+                  thumbColor="#FFFFFF"
                 />
               </View>
             </View>
@@ -510,7 +510,7 @@ export const PatientHubScreen: React.FC = () => {
         <Modal transparent animationType="fade" visible={isProcessing}>
           <View style={styles.modalBackdrop}>
             <View style={styles.processingCard}>
-              <ActivityIndicator color={rivio.brand[600]} size="large" />
+              <ActivityIndicator color={rivio.palette.blue} size="large" />
               <Text style={styles.processingTitle}>Processando Laudo</Text>
               <Text style={styles.processingStep}>{currentStep}</Text>
             </View>
@@ -529,7 +529,7 @@ export const PatientHubScreen: React.FC = () => {
           <View style={styles.reviewModalCard}>
             <View style={styles.reviewModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <CheckCircle2 color={rivio.brand[600]} size={20} />
+                <CheckCircle2 color={rivio.palette.blue} size={20} />
                 <Text style={styles.reviewModalTitle}>Laudo Integrado</Text>
               </View>
               <TouchableOpacity onPress={() => setShowReviewModal(false)}>
@@ -553,7 +553,7 @@ export const PatientHubScreen: React.FC = () => {
                 ))
               ) : (
                 <View style={{ padding: 14, alignItems: 'center' }}>
-                  <FileCheck color={rivio.brand[600]} size={32} />
+                  <FileCheck color={rivio.palette.blue} size={32} />
                   <Text style={{ fontSize: 13, color: rivio.ink[600], marginTop: 6, textAlign: 'center' }}>
                     Documento arquivado com segurança no bucket clínico.
                   </Text>
@@ -614,22 +614,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroBox: {
-    backgroundColor: rivio.surface.card,
+    backgroundColor: rivio.palette.superficie,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: rivio.surface.line,
+    borderColor: rivio.palette.superficieAlta,
     marginBottom: 20,
   },
   heroTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: rivio.ink[900],
+    color: rivio.palette.dark01,
     marginBottom: 4,
   },
   heroDesc: {
     fontSize: 13,
-    color: rivio.ink[600],
+    color: rivio.palette.dark03,
     lineHeight: 18,
   },
   actionsStack: {
@@ -637,17 +637,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionCardPrimary: {
-    backgroundColor: rivio.palette.dark01,
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowColor: '#181B1F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    borderWidth: 1.5,
+    borderColor: 'rgba(102, 148, 255, 0.32)',
+    shadowColor: '#6694FF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 2,
   },
   actionIconPrimaryWrap: {
     width: 52,
@@ -664,7 +666,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 3,
+    marginBottom: 4,
+    backgroundColor: 'rgba(233, 146, 255, 0.14)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   badgeText: {
     fontSize: 10,
@@ -676,12 +683,12 @@ const styles = StyleSheet.create({
   actionTitlePrimary: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: rivio.palette.dark01,
     marginBottom: 2,
   },
   actionDescPrimary: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.78)',
+    color: rivio.palette.dark03,
     lineHeight: 16,
   },
   actionCardSecondary: {
@@ -700,7 +707,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   actionCardWearables: {
-    borderColor: 'rgba(102, 148, 255, 0.25)',
+    borderColor: 'rgba(233, 146, 255, 0.3)',
   },
   actionIconSecondaryWrap: {
     width: 48,
@@ -714,7 +721,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: rivio.palette.blue,
+    backgroundColor: 'rgba(233, 146, 255, 0.16)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -722,7 +729,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 3,
+    marginBottom: 4,
+    backgroundColor: rivio.palette.superficie,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   badgeTextDark: {
     fontSize: 10,
@@ -734,12 +746,12 @@ const styles = StyleSheet.create({
   actionTitleSecondary: {
     fontSize: 15,
     fontWeight: '800',
-    color: rivio.ink[900],
+    color: rivio.palette.dark01,
     marginBottom: 2,
   },
   actionDescSecondary: {
     fontSize: 12,
-    color: rivio.ink[600],
+    color: rivio.palette.dark03,
     lineHeight: 16,
   },
   tokenTriggerCard: {
@@ -750,13 +762,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(102, 148, 255, 0.28)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(102, 148, 255, 0.32)',
     shadowColor: '#181B1F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 3,
   },
   tokenTriggerLeft: {
     flexDirection: 'row',

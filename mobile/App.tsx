@@ -46,7 +46,7 @@ function MainNavigation() {
       <View style={styles.topAppBar}>
         <View style={styles.topLogoContainer}>
           <View style={styles.logoPill}>
-            <Activity color={theme.colors.primary} size={16} />
+            <Activity color={rivio.palette.blue} size={16} />
           </View>
           <View style={styles.brandTitleWrap}>
             <Text style={styles.topAppBrand}>
@@ -68,7 +68,7 @@ function MainNavigation() {
             onPress={logout}
             accessibilityLabel="Encerrar sessão"
           >
-            <LogOut color={theme.colors.textSecondary} size={15} />
+            <LogOut color={rivio.palette.dark03} size={15} />
             <Text style={styles.topLogoutText}>Sair</Text>
           </TouchableOpacity>
         </View>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: 'rgba(8, 124, 115, 0.08)',
+    backgroundColor: rivio.palette.superficie,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -126,16 +126,16 @@ const styles = StyleSheet.create({
   topAppBrand: {
     fontSize: 18,
     fontWeight: '900',
-    color: rivio.ink[900],
+    color: rivio.palette.dark01,
     letterSpacing: -0.5,
   },
   topAppBrandDot: {
-    color: '#14A394',
+    color: rivio.palette.purple,
   },
   topAppSubtitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: rivio.brand[600],
+    color: rivio.palette.blue,
   },
   topUserSection: {
     flexDirection: 'row',
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   userBadgePill: {
-    backgroundColor: 'rgba(8, 124, 115, 0.08)',
+    backgroundColor: rivio.palette.superficieAlta,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   userBadgeName: {
     fontSize: 11,
     fontWeight: '700',
-    color: rivio.brand[700],
+    color: rivio.palette.blue,
   },
   topLogoutButton: {
     flexDirection: 'row',
