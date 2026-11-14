@@ -12,10 +12,14 @@ export const rivio = {
     dark02: '#31353D',         // Dark-02: texto padrão do body
     dark03: '#49505C',         // Dark-03: texto secundário
     dark05: '#7A8599',         // Dark-05: muted, base da barra de rolagem e do texto "apagado"
-    blue: '#6694FF',           // Brand/Blue/Base: acento, foco, primário
-    blueHover: '#4D7AE8',
-    purple: '#E992FF',         // Brand/Purple/Base
-    yellow: '#FFBE78',         // Brand/Yellow/Base
+    blue: '#2563EB',           // Brand Blue Base de alto contraste (WCAG AAA)
+    blueLight: '#6694FF',      // Brand Blue Claro
+    blueDeep: '#1E3A8A',       // Azul profundo para números de tokens e destaques
+    blueHover: '#1D4ED8',
+    purple: '#7E22CE',         // Roxo com alto contraste em fundos claros
+    purpleLight: '#E992FF',    // Roxo claro da marca
+    yellow: '#D97706',         // Amarelo legível
+    yellowLight: '#FFBE78',    // Amarelo claro da marca
     superficie: '#F0F5FF',     // Superfície pálida de molduras de ícone/KPI
     superficieAlta: '#E2EBFF', // Superfície alta, nível acima
   },

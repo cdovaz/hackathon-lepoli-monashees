@@ -257,7 +257,7 @@ export const PatientHubScreen: React.FC = () => {
           </View>
           <View style={styles.actionTextsWrap}>
             <View style={styles.badgeRow}>
-              <Sparkles color={rivio.palette.purple} size={12} />
+              <Sparkles color="#7E22CE" size={12} />
               <Text style={styles.badgeText}>Câmera & IA</Text>
             </View>
             <Text style={styles.actionTitlePrimary}>Tirar Foto do Exame</Text>
@@ -305,7 +305,7 @@ export const PatientHubScreen: React.FC = () => {
           </View>
           <View style={styles.actionTextsWrap}>
             <View style={styles.badgeRowDark}>
-              <Activity color={rivio.palette.blue} size={11} />
+              <Activity color="#1D4ED8" size={11} />
               <Text style={styles.badgeTextDark}>Apple Watch & Samsung</Text>
             </View>
             <Text style={styles.actionTitleSecondary}>
@@ -354,7 +354,7 @@ export const PatientHubScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-        <ChevronRight color={rivio.palette.blue} size={20} />
+        <ChevronRight color="#FFFFFF" size={20} />
       </TouchableOpacity>
 
       {/* POPUP MODAL COM O TOKEN DE ACESSO */}
@@ -369,14 +369,14 @@ export const PatientHubScreen: React.FC = () => {
             {/* Header do Popup */}
             <View style={styles.popupHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <KeyRound color={rivio.palette.blue} size={22} />
+                <KeyRound color="#2563EB" size={22} />
                 <Text style={styles.popupTitle}>Token de Acesso Médico</Text>
               </View>
               <TouchableOpacity
                 style={styles.popupCloseBtn}
                 onPress={() => setShowTokenPopup(false)}
               >
-                <X color={rivio.ink[600]} size={18} />
+                <X color={rivio.palette.dark01} size={18} />
               </TouchableOpacity>
             </View>
 
@@ -388,7 +388,7 @@ export const PatientHubScreen: React.FC = () => {
             <View style={styles.tokenBox}>
               <View style={styles.tokenStatusRow}>
                 <View style={styles.openHealthBadge}>
-                  <ShieldCheck color={rivio.palette.blue} size={14} />
+                  <ShieldCheck color="#1E40AF" size={14} />
                   <Text style={styles.openHealthText}>Open Health • 2h</Text>
                 </View>
 
@@ -399,21 +399,21 @@ export const PatientHubScreen: React.FC = () => {
                       ? { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }
                       : timeLeft === 'Token Expirado'
                       ? { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }
-                      : { backgroundColor: 'rgba(102, 148, 255, 0.16)', borderColor: 'rgba(102, 148, 255, 0.35)' },
+                      : { backgroundColor: '#E2EBFF', borderColor: '#93C5FD' },
                   ]}
                 >
                   <Clock
-                    color={!isSessionActive ? '#DC2626' : timeLeft === 'Token Expirado' ? '#D97706' : rivio.palette.blue}
+                    color={!isSessionActive ? '#B91C1C' : timeLeft === 'Token Expirado' ? '#B45309' : '#1E40AF'}
                     size={12}
                   />
                   <Text
                     style={[
                       styles.timerText,
                       !isSessionActive
-                        ? { color: '#DC2626' }
+                        ? { color: '#B91C1C' }
                         : timeLeft === 'Token Expirado'
-                        ? { color: '#D97706' }
-                        : { color: rivio.palette.blue },
+                        ? { color: '#B45309' }
+                        : { color: '#1E40AF' },
                     ]}
                   >
                     {timeLeft}
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: rivio.palette.purple,
+    color: '#7E22CE',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginBottom: 4,
-    backgroundColor: rivio.palette.superficie,
+    backgroundColor: '#EFF6FF',
     alignSelf: 'flex-start',
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   badgeTextDark: {
     fontSize: 10,
     fontWeight: '800',
-    color: rivio.palette.blue,
+    color: '#1D4ED8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -755,20 +755,18 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   tokenTriggerCard: {
-    backgroundColor: rivio.palette.dark01,
+    backgroundColor: '#2563EB',
     borderRadius: 18,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(102, 148, 255, 0.32)',
-    shadowColor: '#181B1F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 4,
   },
   tokenTriggerLeft: {
     flexDirection: 'row',
@@ -780,7 +778,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: rivio.palette.blue,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -791,20 +789,19 @@ const styles = StyleSheet.create({
   },
   tokenTriggerSub: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: 'rgba(255, 255, 255, 0.92)',
+    fontWeight: '500',
   },
   activePill: {
-    backgroundColor: 'rgba(102, 148, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: rivio.palette.blue,
+    backgroundColor: '#FFFFFF',
     borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
   activePillText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: rivio.palette.blue,
+    fontWeight: '900',
+    color: '#1E40AF',
     fontFamily: 'monospace',
   },
   modalBackdrop: {
@@ -829,30 +826,30 @@ const styles = StyleSheet.create({
   popupTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: rivio.ink[900],
+    color: rivio.palette.dark01,
   },
   popupCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: rivio.surface.subtle,
+    backgroundColor: rivio.palette.superficie,
     justifyContent: 'center',
     alignItems: 'center',
   },
   popupDesc: {
     fontSize: 13,
-    color: rivio.ink[600],
+    color: rivio.palette.dark03,
     lineHeight: 18,
     marginBottom: 16,
   },
   tokenBox: {
-    backgroundColor: rivio.palette.dark01,
+    backgroundColor: '#F0F5FF',
     borderRadius: 16,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(102, 148, 255, 0.28)',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E8',
   },
   tokenStatusRow: {
     width: '100%',
@@ -865,7 +862,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(102, 148, 255, 0.16)',
+    backgroundColor: '#E2EBFF',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -873,7 +870,7 @@ const styles = StyleSheet.create({
   openHealthText: {
     fontSize: 10,
     fontWeight: '800',
-    color: rivio.palette.blue,
+    color: '#1E40AF',
   },
   timerBadge: {
     flexDirection: 'row',
@@ -889,34 +886,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   tokenCodeText: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '900',
-    color: rivio.palette.blue,
-    letterSpacing: 4,
+    color: '#1E3A8A',
+    letterSpacing: 6,
     fontFamily: 'monospace',
-    marginVertical: 6,
+    marginVertical: 8,
   },
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: rivio.palette.blue,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 10,
-    marginTop: 4,
+    marginTop: 6,
   },
   copyBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   togglesCard: {
-    backgroundColor: rivio.surface.subtle,
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 8,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   toggleRow: {
     flexDirection: 'row',
@@ -924,12 +923,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: rivio.surface.line,
+    borderBottomColor: '#E2E8F0',
   },
   toggleLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: rivio.ink[900],
+    color: rivio.palette.dark01,
   },
   popupActionsRow: {
     flexDirection: 'row',
@@ -937,7 +936,7 @@ const styles = StyleSheet.create({
   },
   generateBtn: {
     flex: 1,
-    backgroundColor: rivio.palette.blue,
+    backgroundColor: '#2563EB',
     paddingVertical: 12,
     borderRadius: 12,
     flexDirection: 'row',
@@ -963,7 +962,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   revokeBtnText: {
-    color: '#DC2626',
+    color: '#B91C1C',
     fontSize: 13,
     fontWeight: '800',
   },
