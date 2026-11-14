@@ -42,7 +42,7 @@ function MainNavigation() {
     <View style={[styles.safeArea, { paddingTop: topInset, paddingBottom: bottomInset }]}>
       <StatusBar style="dark" />
 
-      {/* Barra Superior / Header Executivo Rivio */}
+      {/* Barra Superior / Header Executivo Rivio Flow */}
       <View style={styles.topAppBar}>
         <View style={styles.topLogoContainer}>
           <View style={styles.logoPill}>
@@ -50,7 +50,7 @@ function MainNavigation() {
           </View>
           <View style={styles.brandTitleWrap}>
             <Text style={styles.topAppBrand}>
-              rivio<Text style={styles.topAppBrandDot}>.</Text>
+              Rivio Flow<Text style={styles.topAppBrandDot}>.</Text>
             </Text>
             <Text style={styles.topAppSubtitle}>Saúde</Text>
           </View>

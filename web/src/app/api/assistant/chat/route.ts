@@ -98,10 +98,10 @@ export async function POST(req: NextRequest) {
       });
     } else {
       text =
-        `Seu prontuário unificado no Hub Rivio integra exames laboratoriais desde 2022 (Glicose, LDL, TSH e Ferritina) e sinais contínuos do seu Apple Watch. No seu Grafo Clínico constam ${graphNodes.length || 10} nós ativos e ${graphEdges.length || 9} correlações de causa/efeito mapeadas. Você pode me perguntar sobre qualquer sintoma ou biomarcador específico.`;
+        `Seu prontuário unificado no Rivio Flow integra exames laboratoriais desde 2022 (Glicose, LDL, TSH e Ferritina) e sinais contínuos do seu Apple Watch. No seu Grafo Clínico constam ${graphNodes.length || 10} nós ativos e ${graphEdges.length || 9} correlações de causa/efeito mapeadas. Você pode me perguntar sobre qualquer sintoma ou biomarcador específico.`;
 
       citedSources.push({
-        title: 'Grafo de Saúde Pessoal Rivio',
+        title: 'Grafo de Saúde Pessoal Rivio Flow',
         date: 'Sincronizado',
         value: 'Nós de Biomarcadores, Alertas e Sintomas',
         sourceType: 'clinical_graph',

@@ -30,7 +30,7 @@ export interface ClinicalPdfPayload {
 
 export function generateClinicalPdfBytes(payload: ClinicalPdfPayload): Uint8Array {
   const lines: string[] = [
-    'RIVIO HEALTH HUB - LAUDO LABORATORIAL ORIGINAL',
+    'RIVIO FLOW - LAUDO LABORATORIAL ORIGINAL',
     `Documento ID: ${payload.documentId}`,
     `Titulo: ${payload.title}`,
     `Paciente: ${payload.patientName} (${payload.patientId})`,

@@ -381,7 +381,7 @@ export const PatientHubScreen: React.FC = () => {
             </View>
 
             <Text style={styles.popupDesc}>
-              Informe o código abaixo para o médico digitar no portal Rivio no consultório.
+              Informe o código abaixo para o médico digitar no portal Rivio Flow no consultório.
             </Text>
 
             {/* Caixa do Código de 6 Dígitos */}

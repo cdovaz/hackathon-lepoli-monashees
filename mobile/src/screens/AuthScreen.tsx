@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import {
   Activity,
@@ -18,17 +20,12 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  ShieldCheck,
   ArrowRight,
   ChevronRight,
   CheckCircle2,
   AlertCircle,
-  Heart,
-  Droplets,
-  Thermometer,
-  ShieldAlert,
   CreditCard,
-  UserCheck,
+  X,
 } from 'lucide-react-native';
 import { rivio } from '../theme/colors';
 import { useHealthStore } from '../store/useHealthStore';
@@ -40,79 +37,48 @@ import {
   SYNTHETIC_PATIENTS_CPFS,
 } from '../lib/cpf';
 
-interface PatientCardConfig {
+interface SyntheticPatientOption {
   id: string;
   name: string;
   cpf: string;
-  age: number;
-  sex: string;
-  city: string;
   badge: string;
   badgeType: 'ok' | 'warn' | 'danger' | 'info';
-  icon: any;
-  summary: string;
-  keyMetric: string;
 }
 
-const PATIENTS_CONFIG: PatientCardConfig[] = [
+const SYNTHETIC_PATIENTS: SyntheticPatientOption[] = [
   {
     id: 'usr-marcos-2026',
     name: 'Marcos Oliveira',
-    cpf: SYNTHETIC_PATIENTS_CPFS['usr-marcos-2026'].formatted,
-    age: 58,
-    sex: 'Masculino',
-    city: 'São Paulo, SP',
+    cpf: SYNTHETIC_PATIENTS_CPFS['usr-marcos-2026']?.formatted || '123.456.789-09',
     badge: 'Diabetes Tipo 2',
     badgeType: 'warn',
-    icon: Droplets,
-    summary: 'Em tratamento com Metformina e Dapagliflozina. Queda consistente de HbA1c de 8,9% para 6,7%.',
-    keyMetric: 'HbA1c: 8,9% → 6,7% • 365d Wearables',
   },
   {
     id: 'usr-camila-2026',
     name: 'Camila Santos',
-    cpf: SYNTHETIC_PATIENTS_CPFS['usr-camila-2026'].formatted,
-    age: 29,
-    sex: 'Feminino',
-    city: 'Curitiba, PR',
+    cpf: SYNTHETIC_PATIENTS_CPFS['usr-camila-2026']?.formatted || '987.654.321-00',
     badge: 'Rotina Preventiva',
     badgeType: 'ok',
-    icon: Heart,
-    summary: 'Jovem saudável, check-ups periódicos normais, sem alertas clínicos. Suplementação de Vitamina D.',
-    keyMetric: 'Todos os exames na meta • 0 alertas',
   },
   {
     id: 'usr-antonio-2026',
     name: 'Antônio Silva',
-    cpf: SYNTHETIC_PATIENTS_CPFS['usr-antonio-2026'].formatted,
-    age: 47,
-    sex: 'Masculino',
-    city: 'Sobral, CE',
+    cpf: SYNTHETIC_PATIENTS_CPFS['usr-antonio-2026']?.formatted || '456.789.123-45',
     badge: 'Leishmaniose Visceral',
     badgeType: 'danger',
-    icon: ShieldAlert,
-    summary: 'Pancitopenia e ferritina até 2.100 ng/mL na internação hospitalar. Plena recuperação clínica pós-tratamento.',
-    keyMetric: 'Leucócitos 2.100 → 6.400 • Ferritina 2.100 ng/mL',
   },
   {
     id: 'usr-rafael-2026',
     name: 'Rafael Costa',
-    cpf: SYNTHETIC_PATIENTS_CPFS['usr-rafael-2026'].formatted,
-    age: 35,
-    sex: 'Masculino',
-    city: 'Florianópolis, SC',
-    badge: 'Influenza H1N1 Aguda',
+    cpf: SYNTHETIC_PATIENTS_CPFS['usr-rafael-2026']?.formatted || '321.654.987-12',
+    badge: 'Influenza H1N1',
     badgeType: 'info',
-    icon: Thermometer,
-    summary: 'Queda transitória de SpO₂ (93%) e taquicardia em repouso (118 bpm) em out/2026. Terapia com Oseltamivir.',
-    keyMetric: 'SpO₂ 93% • Taquicardia 118 bpm em 21-26/out',
   },
 ];
 
 export const AuthScreen: React.FC = () => {
   const { selectPatient, login, register, isLoading: storeLoading } = useHealthStore();
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [showManualLogin, setShowManualLogin] = useState<boolean>(true);
   const [isRegister, setIsRegister] = useState<boolean>(false);
   const [cpf, setCpf] = useState<string>('123.456.789-09');
   const [password, setPassword] = useState<string>('••••••••');
@@ -122,6 +88,7 @@ export const AuthScreen: React.FC = () => {
   const [manualLoading, setManualLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPickerModal, setShowPickerModal] = useState<boolean>(false);
 
   const cleanCurrentCpf = cleanCpf(cpf);
   const isCpfComplete = cleanCurrentCpf.length === 11;
@@ -133,15 +100,16 @@ export const AuthScreen: React.FC = () => {
     setSuccessMessage(null);
   };
 
-  const handlePatientSelect = async (patient: PatientCardConfig) => {
+  const handlePatientSelect = async (patient: SyntheticPatientOption) => {
     setSelectedPatientId(patient.id);
     setCpf(patient.cpf);
+    setShowPickerModal(false);
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
       await selectPatient(patient.id);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Falha ao conectar com o prontuário no Supabase.');
+      setErrorMessage(err?.message || 'Falha ao conectar com o prontuário.');
     }
   };
 
@@ -152,26 +120,20 @@ export const AuthScreen: React.FC = () => {
 
     try {
       if (isRegister) {
-        if (!cleanCurrentCpf) {
-          setErrorMessage('É obrigatório informar o CPF para criar sua conta no prontuário.');
-          setManualLoading(false);
-          return;
-        }
-
-        if (cleanCurrentCpf.length !== 11) {
-          setErrorMessage('O CPF é obrigatório e precisa ter exatamente 11 dígitos numéricos.');
+        if (!cleanCurrentCpf || cleanCurrentCpf.length !== 11) {
+          setErrorMessage('Informe um CPF válido com 11 dígitos.');
           setManualLoading(false);
           return;
         }
 
         if (!isCpfValid) {
-          setErrorMessage('CPF com dígitos verificadores inválidos. É obrigatório um CPF válido para criar a conta.');
+          setErrorMessage('CPF com dígitos verificadores inválidos.');
           setManualLoading(false);
           return;
         }
 
         if (!name.trim()) {
-          setErrorMessage('Por favor, informe seu nome completo para o prontuário.');
+          setErrorMessage('Por favor, informe seu nome completo.');
           setManualLoading(false);
           return;
         }
@@ -190,26 +152,26 @@ export const AuthScreen: React.FC = () => {
         });
 
         if (!res.success) {
-          setErrorMessage(res.error || 'Não foi possível cadastrar o paciente.');
+          setErrorMessage(res.error || 'Não foi possível cadastrar.');
         } else {
-          setSuccessMessage(`Prontuário criado e indexado com sucesso com o CPF ${formatCpf(cleanCurrentCpf)}!`);
+          setSuccessMessage(`Conta cadastrada com sucesso!`);
         }
       } else {
         if (!cleanCurrentCpf || cleanCurrentCpf.length !== 11) {
-          setErrorMessage('Por favor, informe um CPF completo com 11 dígitos.');
+          setErrorMessage('Informe um CPF completo.');
           setManualLoading(false);
           return;
         }
 
         if (!password) {
-          setErrorMessage('Por favor, informe sua senha de acesso.');
+          setErrorMessage('Informe sua senha de acesso.');
           setManualLoading(false);
           return;
         }
 
         const res = await login(cleanCurrentCpf, password);
         if (!res.success) {
-          setErrorMessage(res.error || 'Credenciais inválidas. Verifique seu CPF e senha.');
+          setErrorMessage(res.error || 'Credenciais inválidas.');
         }
       }
     } catch (err: any) {
@@ -226,22 +188,19 @@ export const AuthScreen: React.FC = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Branding e Logo Rivio — Pulso Calmo */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo e Identidade Enxuta */}
         <View style={styles.brandHeader}>
           <View style={styles.logoCircle}>
-            <Activity color={rivio.brand[600]} size={32} />
+            <Activity color={rivio.brand[600]} size={28} />
           </View>
           <Text style={styles.appName}>
-            rivio<Text style={styles.brandDot}>.</Text>
+            Rivio Flow<Text style={styles.brandDot}>.</Text>
           </Text>
-          <Text style={styles.appTagline}>
-            Do exame em papel de dez anos atrás aos sinais do seu relógio em tempo real.
-          </Text>
-          <View style={styles.tagBadge}>
-            <Sparkles color={rivio.brand[600]} size={12} />
-            <Text style={styles.tagBadgeText}>Prontuário Longitudinal • Indexador Único CPF</Text>
-          </View>
         </View>
 
         {errorMessage && (
@@ -258,363 +217,288 @@ export const AuthScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Card Principal de Autenticação com CPF e Senha */}
-        {showManualLogin && (
-          <View style={styles.authCard}>
-            <View style={styles.authCardHeader}>
-              <View style={styles.authCardTitleRow}>
-                <CreditCard color={rivio.brand[600]} size={18} />
-                <Text style={styles.authCardTitle}>
-                  {isRegister ? 'Cadastro de Conta do Paciente' : 'Acesso ao Prontuário'}
-                </Text>
-              </View>
-              <Text style={styles.authCardSubtitle}>
-                {isRegister
-                  ? 'Preencha o CPF da pessoa como indexador obrigatório do prontuário digital.'
-                  : 'Entre com o seu CPF indexador e senha de acesso.'}
+        {/* Card Enxuto de Login / Cadastro */}
+        <View style={styles.authCard}>
+          <View style={styles.tabToggle}>
+            <TouchableOpacity
+              style={[styles.tabButton, !isRegister && styles.tabButtonActive]}
+              onPress={() => {
+                setIsRegister(false);
+                setErrorMessage(null);
+                setSuccessMessage(null);
+                if (!cpf) {
+                  setCpf('123.456.789-09');
+                  setPassword('••••••••');
+                }
+              }}
+            >
+              <Text style={[styles.tabButtonText, !isRegister && styles.tabButtonTextActive]}>
+                Entrar
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabButton, isRegister && styles.tabButtonActive]}
+              onPress={() => {
+                setIsRegister(true);
+                setErrorMessage(null);
+                setSuccessMessage(null);
+                if (cpf === '123.456.789-09') {
+                  setCpf('');
+                  setPassword('');
+                  setName('');
+                  setEmail('');
+                }
+              }}
+            >
+              <Text style={[styles.tabButtonText, isRegister && styles.tabButtonTextActive]}>
+                Criar Conta
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.formArea}>
+            {/* Campo: CPF */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabelRow}>
+                <Text style={styles.inputLabel}>CPF</Text>
+                {isCpfComplete && (
+                  <View
+                    style={[
+                      styles.cpfValidationBadge,
+                      { backgroundColor: isCpfValid ? '#DCFCE7' : '#FEE2E2' },
+                    ]}
+                  >
+                    {isCpfValid ? (
+                      <>
+                        <CheckCircle2 color="#059669" size={11} />
+                        <Text style={[styles.cpfValidationText, { color: '#059669' }]}>
+                          Válido
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle color="#DC2626" size={11} />
+                        <Text style={[styles.cpfValidationText, { color: '#DC2626' }]}>
+                          Inválido
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              <View
+                style={[
+                  styles.inputWrapper,
+                  isCpfComplete &&
+                    (isCpfValid ? styles.inputWrapperSuccess : styles.inputWrapperError),
+                ]}
+              >
+                <CreditCard
+                  color={
+                    isCpfComplete
+                      ? isCpfValid
+                        ? '#059669'
+                        : '#DC2626'
+                      : rivio.ink[400]
+                  }
+                  size={18}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="000.000.000-00"
+                  placeholderTextColor={rivio.ink[400]}
+                  keyboardType="numeric"
+                  maxLength={14}
+                  value={cpf}
+                  onChangeText={handleCpfChange}
+                />
+                {isRegister && (
+                  <TouchableOpacity
+                    style={styles.generateCpfBtn}
+                    onPress={() => {
+                      const generated = generateValidCpf();
+                      setCpf(generated);
+                      setErrorMessage(null);
+                    }}
+                  >
+                    <Sparkles color={rivio.brand[700]} size={11} />
+                    <Text style={styles.generateCpfBtnText}>Gerar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
-            <View style={styles.tabToggle}>
-              <TouchableOpacity
-                style={[styles.tabButton, !isRegister && styles.tabButtonActive]}
-                onPress={() => {
-                  setIsRegister(false);
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  if (!cpf) {
-                    setCpf('123.456.789-09');
-                    setPassword('••••••••');
-                  }
-                }}
-              >
-                <Text style={[styles.tabButtonText, !isRegister && styles.tabButtonTextActive]}>
-                  Entrar com CPF
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tabButton, isRegister && styles.tabButtonActive]}
-                onPress={() => {
-                  setIsRegister(true);
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  if (cpf === '123.456.789-09') {
-                    setCpf('');
-                    setPassword('');
-                    setName('');
-                    setEmail('');
-                  }
-                }}
-              >
-                <Text style={[styles.tabButtonText, isRegister && styles.tabButtonTextActive]}>
-                  Cadastro de Conta (CPF)
-                </Text>
-              </TouchableOpacity>
-            </View>
-
+            {/* Nome Completo (Apenas Cadastro) */}
             {isRegister && (
-              <View style={styles.cpfRequiredNotice}>
-                <ShieldCheck color={rivio.brand[700]} size={18} />
-                <Text style={styles.cpfRequiredNoticeText}>
-                  <Text style={styles.boldText}>CPF Obrigatório no Cadastro:</Text> O CPF é o indexador médico único que vincula todos os seus exames laboratoriais e dados de saúde de forma inviolável.
-                </Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nome Completo</Text>
+                <View style={styles.inputWrapper}>
+                  <User color={rivio.ink[400]} size={18} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Seu nome completo"
+                    placeholderTextColor={rivio.ink[400]}
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
               </View>
             )}
 
-            <View style={styles.formArea}>
-              {/* CAMPO 1: CPF DO PACIENTE (INDEXADOR OBRIGATÓRIO) */}
-              <View style={[styles.inputGroup, isRegister && styles.cpfHighlightBox]}>
-                <View style={styles.inputLabelRow}>
-                  <Text style={[styles.inputLabel, isRegister && styles.cpfHighlightLabel]}>
-                    {isRegister ? '1. CPF da Pessoa (Obrigatório para Cadastro) *' : 'CPF do Paciente (Indexador)'}
-                  </Text>
-                  {isCpfComplete && (
-                    <View
-                      style={[
-                        styles.cpfValidationBadge,
-                        { backgroundColor: isCpfValid ? '#DCFCE7' : '#FEE2E2' },
-                      ]}
-                    >
-                      {isCpfValid ? (
-                        <>
-                          <CheckCircle2 color="#059669" size={11} />
-                          <Text style={[styles.cpfValidationText, { color: '#059669' }]}>
-                            CPF Válido
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle color="#DC2626" size={11} />
-                          <Text style={[styles.cpfValidationText, { color: '#DC2626' }]}>
-                            CPF Inválido
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    isRegister && styles.cpfInputWrapperLarge,
-                    isCpfComplete &&
-                      (isCpfValid ? styles.inputWrapperSuccess : styles.inputWrapperError),
-                  ]}
-                >
-                  <CreditCard
-                    color={
-                      isCpfComplete
-                        ? isCpfValid
-                          ? '#059669'
-                          : '#DC2626'
-                        : isRegister
-                        ? rivio.brand[600]
-                        : rivio.ink[400]
-                    }
-                    size={20}
-                  />
-                  <TextInput
-                    style={[styles.textInput, isRegister && styles.cpfTextInputLarge]}
-                    placeholder="000.000.000-00 (Obrigatório)"
-                    placeholderTextColor={rivio.ink[400]}
-                    keyboardType="numeric"
-                    maxLength={14}
-                    value={cpf}
-                    onChangeText={handleCpfChange}
-                  />
-                  {isRegister && (
-                    <TouchableOpacity
-                      style={styles.generateCpfBtn}
-                      onPress={() => {
-                        const generated = generateValidCpf();
-                        setCpf(generated);
-                        setErrorMessage(null);
-                      }}
-                    >
-                      <Sparkles color={rivio.brand[700]} size={11} />
-                      <Text style={styles.generateCpfBtnText}>Gerar Válido</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <Text
-                  style={[
-                    styles.inputHint,
-                    isRegister && !isCpfComplete && styles.inputHintWarn,
-                    isCpfComplete && isCpfValid && styles.inputHintSuccess,
-                    isCpfComplete && !isCpfValid && styles.inputHintError,
-                  ]}
-                >
-                  {isRegister
-                    ? isCpfComplete
-                      ? isCpfValid
-                        ? '✓ CPF validado com sucesso! Este será o indexador do seu prontuário.'
-                        : '✕ Dígitos verificadores inválidos. Digite um CPF matematicamente válido.'
-                      : '⚠ O CPF é obrigatório para abrir o prontuário. Digite os 11 dígitos numéricos.'
-                    : 'Digite o CPF cadastrado ou selecione um perfil demo abaixo.'}
-                </Text>
-              </View>
-
-              {/* CAMPO 2: NOME COMPLETO (APENAS CADASTRO) */}
-              {isRegister && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>2. Nome Completo do Paciente *</Text>
-                  <View style={styles.inputWrapper}>
-                    <User color={rivio.ink[400]} size={18} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Ex: João da Silva"
-                      placeholderTextColor={rivio.ink[400]}
-                      value={name}
-                      onChangeText={setName}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* CAMPO 3: E-MAIL (APENAS CADASTRO) */}
-              {isRegister && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>3. E-mail (Opcional)</Text>
-                  <View style={styles.inputWrapper}>
-                    <Mail color={rivio.ink[400]} size={18} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="seu.email@exemplo.com"
-                      placeholderTextColor={rivio.ink[400]}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={email}
-                      onChangeText={setEmail}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* CAMPO 4: SENHA DE ACESSO */}
+            {/* E-mail (Apenas Cadastro) */}
+            {isRegister && (
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>
-                  {isRegister ? '4. Senha de Acesso *' : 'Senha de Acesso'}
-                </Text>
+                <Text style={styles.inputLabel}>E-mail (opcional)</Text>
                 <View style={styles.inputWrapper}>
-                  <Lock color={rivio.ink[400]} size={18} />
+                  <Mail color={rivio.ink[400]} size={18} />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Sua senha secreta (mínimo 4 caracteres)"
+                    placeholder="seu@email.com"
                     placeholderTextColor={rivio.ink[400]}
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    {showPassword ? (
-                      <EyeOff color={rivio.ink[400]} size={18} />
-                    ) : (
-                      <Eye color={rivio.ink[400]} size={18} />
-                    )}
-                  </TouchableOpacity>
                 </View>
               </View>
+            )}
 
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleManualSubmit}
-                disabled={isBusy}
-              >
-                {manualLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.submitButtonText}>
-                      {isRegister ? 'Cadastrar Prontuário com CPF' : 'Acessar com CPF e Senha'}
-                    </Text>
-                    <ArrowRight color="#FFFFFF" size={16} />
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* Botão de Alternância Direta entre Login e Cadastro */}
-              <TouchableOpacity
-                style={styles.switchAuthModeBtn}
-                onPress={() => {
-                  const nextRegisterState = !isRegister;
-                  setIsRegister(nextRegisterState);
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  if (nextRegisterState) {
-                    setCpf('');
-                    setPassword('');
-                    setName('');
-                    setEmail('');
-                  } else {
-                    setCpf('123.456.789-09');
-                    setPassword('••••••••');
-                  }
-                }}
-              >
-                <Text style={styles.switchAuthModeText}>
-                  {!isRegister ? (
-                    <>Ainda não possui conta? <Text style={styles.switchAuthModeHighlight}>Cadastre-se com seu CPF aqui</Text></>
+            {/* Senha */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Senha</Text>
+              <View style={styles.inputWrapper}>
+                <Lock color={rivio.ink[400]} size={18} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Sua senha"
+                  placeholderTextColor={rivio.ink[400]}
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  {showPassword ? (
+                    <EyeOff color={rivio.ink[400]} size={18} />
                   ) : (
-                    <>Já possui cadastro? <Text style={styles.switchAuthModeHighlight}>Entrar com seu CPF</Text></>
+                    <Eye color={rivio.ink[400]} size={18} />
                   )}
-                </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        )}
 
-        {/* Separador e Seção de Seleção Rápida de Pacientes */}
+            {/* Botão de Envio */}
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleManualSubmit}
+              disabled={isBusy}
+            >
+              {manualLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>
+                    {isRegister ? 'Cadastrar' : 'Entrar'}
+                  </Text>
+                  <ArrowRight color="#FFFFFF" size={16} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Separador */}
         <View style={styles.dividerWrap}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OU SELECIONE UM PERFIL DEMO PRÉ-CONFIGURADO</Text>
+          <Text style={styles.dividerText}>OU</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pacientes Sintéticos com CPF Indexado</Text>
-          <Text style={styles.sectionSubtitle}>
-            Toque em um card para carregar o CPF indexador e os dados clínicos do paciente no Supabase.
-          </Text>
-        </View>
+        {/* Apenas um Botão para Pacientes Sintéticos */}
+        <TouchableOpacity
+          style={styles.syntheticButton}
+          onPress={() => setShowPickerModal(true)}
+          disabled={isBusy}
+          activeOpacity={0.8}
+        >
+          <Sparkles color={rivio.brand[600]} size={18} />
+          <Text style={styles.syntheticButtonText}>Acessar com Paciente Sintético</Text>
+          {isBusy && selectedPatientId ? (
+            <ActivityIndicator color={rivio.brand[600]} size="small" />
+          ) : (
+            <ChevronRight color={rivio.brand[600]} size={18} />
+          )}
+        </TouchableOpacity>
 
-        <View style={styles.cardsGrid}>
-          {PATIENTS_CONFIG.map((patient) => {
-            const IconComponent = patient.icon;
-            const isSelected = selectedPatientId === patient.id && isBusy;
-            const badgeColors =
-              patient.badgeType === 'ok'
-                ? rivio.clinical.ok
-                : patient.badgeType === 'warn'
-                ? rivio.clinical.warn
-                : patient.badgeType === 'danger'
-                ? rivio.clinical.danger
-                : rivio.clinical.info;
-
-            return (
-              <TouchableOpacity
-                key={patient.id}
-                style={[styles.patientCard, isSelected && styles.patientCardActive]}
-                onPress={() => handlePatientSelect(patient)}
-                disabled={isBusy}
-                activeOpacity={0.8}
-              >
-                <View style={styles.patientCardHeader}>
-                  <View style={styles.patientAvatarWrap}>
-                    <IconComponent color={rivio.brand[600]} size={20} />
-                  </View>
-                  <View style={styles.patientMeta}>
-                    <Text style={styles.patientName}>{patient.name}</Text>
-                    <View style={styles.cpfRow}>
-                      <CreditCard color={rivio.brand[600]} size={11} />
-                      <Text style={styles.cpfText}>CPF: {patient.cpf}</Text>
-                    </View>
-                    <Text style={styles.patientDemographics}>
-                      {patient.age} anos • {patient.sex} • {patient.city}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.patientBadge,
-                      { backgroundColor: badgeColors.bg, borderColor: badgeColors.border },
-                    ]}
-                  >
-                    <Text style={[styles.patientBadgeText, { color: badgeColors.fg }]}>
-                      {patient.badge}
-                    </Text>
-                  </View>
+        {/* Modal Enxuto para Seleção de Paciente Sintético */}
+        <Modal
+          visible={showPickerModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPickerModal(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowPickerModal(false)}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleRow}>
+                  <Sparkles color={rivio.brand[600]} size={18} />
+                  <Text style={styles.modalTitle}>Pacientes Sintéticos</Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.modalCloseBtn}
+                  onPress={() => setShowPickerModal(false)}
+                >
+                  <X color={rivio.ink[400]} size={20} />
+                </TouchableOpacity>
+              </View>
 
-                <Text style={styles.patientSummary}>{patient.summary}</Text>
+              <View style={styles.modalList}>
+                {SYNTHETIC_PATIENTS.map((patient) => {
+                  const isSelected = selectedPatientId === patient.id && isBusy;
+                  const badgeColors =
+                    patient.badgeType === 'ok'
+                      ? rivio.clinical.ok
+                      : patient.badgeType === 'warn'
+                      ? rivio.clinical.warn
+                      : patient.badgeType === 'danger'
+                      ? rivio.clinical.danger
+                      : rivio.clinical.info;
 
-                <View style={styles.patientCardFooter}>
-                  <View style={styles.keyMetricWrap}>
-                    <Activity color={rivio.ink[400]} size={12} />
-                    <Text style={styles.keyMetricText}>{patient.keyMetric}</Text>
-                  </View>
-                  {isSelected ? (
-                    <ActivityIndicator color={rivio.brand[600]} size="small" />
-                  ) : (
-                    <View style={styles.enterButtonMini}>
-                      <Text style={styles.enterButtonText}>Usar Perfil</Text>
-                      <ChevronRight color={rivio.brand[700]} size={14} />
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Rodapé LGPD / Privacidade */}
-        <View style={styles.privacyFooter}>
-          <ShieldCheck color={rivio.brand[600]} size={15} />
-          <Text style={styles.privacyText}>
-            CPF criptografado como indexador seguro no banco de dados. Conformidade estrita com LGPD e interoperabilidade médica.
-          </Text>
-        </View>
+                  return (
+                    <TouchableOpacity
+                      key={patient.id}
+                      style={[styles.modalItem, isSelected && styles.modalItemActive]}
+                      onPress={() => handlePatientSelect(patient)}
+                      disabled={isBusy}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.modalItemLeft}>
+                        <Text style={styles.modalItemName}>{patient.name}</Text>
+                        <View
+                          style={[
+                            styles.modalBadge,
+                            { backgroundColor: badgeColors.bg, borderColor: badgeColors.border },
+                          ]}
+                        >
+                          <Text style={[styles.modalBadgeText, { color: badgeColors.fg }]}>
+                            {patient.badge}
+                          </Text>
+                        </View>
+                      </View>
+                      {isSelected ? (
+                        <ActivityIndicator color={rivio.brand[600]} size="small" />
+                      ) : (
+                        <ChevronRight color={rivio.ink[400]} size={18} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -626,19 +510,19 @@ const styles = StyleSheet.create({
     backgroundColor: rivio.surface.base,
   },
   scrollContent: {
-    padding: 16,
-    paddingTop: 36,
+    padding: 20,
+    paddingTop: 48,
     paddingBottom: 40,
     alignItems: 'center',
   },
   brandHeader: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   logoCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: rivio.brand[50],
     borderWidth: 1.5,
     borderColor: rivio.brand[200],
@@ -652,38 +536,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: rivio.ink[900],
     letterSpacing: -1,
   },
   brandDot: {
     color: rivio.brand[500],
-  },
-  appTagline: {
-    fontSize: 12,
-    color: rivio.ink[600],
-    textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 320,
-    lineHeight: 17,
-  },
-  tagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: rivio.brand[50],
-    borderWidth: 1,
-    borderColor: rivio.brand[200],
-    borderRadius: rivio.radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginTop: 8,
-    gap: 6,
-  },
-  tagBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: rivio.brand[700],
   },
   errorBanner: {
     flexDirection: 'row',
@@ -695,7 +554,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 400,
     gap: 8,
   },
   errorBannerText: {
@@ -713,7 +572,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 400,
     gap: 8,
   },
   successBannerText: {
@@ -724,7 +583,7 @@ const styles = StyleSheet.create({
   },
   authCard: {
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 400,
     backgroundColor: rivio.surface.card,
     borderRadius: rivio.radius.lg,
     borderWidth: 1,
@@ -732,77 +591,16 @@ const styles = StyleSheet.create({
     padding: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
-    marginBottom: 16,
-  },
-  authCardHeader: {
-    marginBottom: 12,
-  },
-  authCardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  authCardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: rivio.ink[900],
-  },
-  authCardSubtitle: {
-    fontSize: 11,
-    color: rivio.ink[600],
-    lineHeight: 15,
-  },
-  cpfRequiredNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: rivio.brand[50],
-    borderWidth: 1,
-    borderColor: rivio.brand[200],
-    borderRadius: rivio.radius.sm,
-    padding: 10,
-    marginBottom: 12,
-    gap: 8,
-  },
-  cpfRequiredNoticeText: {
-    fontSize: 11,
-    color: rivio.brand[800],
-    lineHeight: 16,
-    flex: 1,
-  },
-  boldText: {
-    fontWeight: '700',
-  },
-  labelActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  generateCpfBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: rivio.brand[50],
-    borderWidth: 1,
-    borderColor: rivio.brand[200],
-    borderRadius: rivio.radius.pill,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  generateCpfBtnText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: rivio.brand[700],
   },
   tabToggle: {
     flexDirection: 'row',
     backgroundColor: rivio.surface.subtle,
     borderRadius: rivio.radius.sm,
     padding: 3,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   tabButton: {
     flex: 1,
@@ -819,7 +617,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   tabButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
     color: rivio.ink[400],
   },
@@ -828,33 +626,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   formArea: {
-    gap: 10,
+    gap: 12,
   },
   inputGroup: {
     gap: 4,
-  },
-  cpfHighlightBox: {
-    backgroundColor: rivio.brand[50],
-    borderWidth: 1.5,
-    borderColor: rivio.brand[200],
-    borderRadius: rivio.radius.md,
-    padding: 10,
-    gap: 6,
-  },
-  cpfHighlightLabel: {
-    color: rivio.brand[900],
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  cpfInputWrapperLarge: {
-    height: 48,
-    backgroundColor: '#FFFFFF',
-    borderColor: rivio.brand[200],
-  },
-  cpfTextInputLarge: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
   inputLabelRow: {
     flexDirection: 'row',
@@ -900,22 +675,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: rivio.ink[900],
   },
-  inputHint: {
-    fontSize: 10,
-    color: rivio.ink[400],
-    marginTop: 2,
+  generateCpfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: rivio.brand[50],
+    borderWidth: 1,
+    borderColor: rivio.brand[200],
+    borderRadius: rivio.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  inputHintWarn: {
-    color: '#D97706',
-    fontWeight: '600',
-  },
-  inputHintSuccess: {
-    color: '#059669',
-    fontWeight: '600',
-  },
-  inputHintError: {
-    color: '#DC2626',
-    fontWeight: '600',
+  generateCpfBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: rivio.brand[700],
   },
   submitButton: {
     backgroundColor: rivio.brand[600],
@@ -925,35 +699,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
+    marginTop: 4,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
-  switchAuthModeBtn: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginTop: 4,
-  },
-  switchAuthModeText: {
-    fontSize: 12,
-    color: rivio.ink[600],
-    textAlign: 'center',
-  },
-  switchAuthModeHighlight: {
-    color: rivio.brand[700],
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
   dividerWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    maxWidth: 440,
-    marginVertical: 14,
-    gap: 8,
+    maxWidth: 400,
+    marginVertical: 18,
+    gap: 10,
   },
   dividerLine: {
     flex: 1,
@@ -961,148 +720,111 @@ const styles = StyleSheet.create({
     backgroundColor: rivio.surface.line,
   },
   dividerText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: rivio.ink[400],
     letterSpacing: 0.5,
   },
-  sectionHeader: {
+  syntheticButton: {
     width: '100%',
-    maxWidth: 440,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: rivio.ink[900],
-  },
-  sectionSubtitle: {
-    fontSize: 11,
-    color: rivio.ink[600],
-    marginTop: 2,
-  },
-  cardsGrid: {
-    width: '100%',
-    maxWidth: 440,
-    gap: 10,
-  },
-  patientCard: {
-    backgroundColor: rivio.surface.card,
+    maxWidth: 400,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: rivio.brand[50],
+    borderWidth: 1.5,
+    borderColor: rivio.brand[200],
     borderRadius: rivio.radius.md,
-    borderWidth: 1,
-    borderColor: rivio.surface.line,
-    padding: 12,
-    shadowColor: '#000000',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 10,
+    shadowColor: rivio.brand[900],
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 1,
   },
-  patientCardActive: {
-    borderColor: rivio.brand[500],
-    backgroundColor: rivio.brand[50],
+  syntheticButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: rivio.brand[700],
+    flex: 1,
   },
-  patientCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  patientAvatarWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: rivio.brand[50],
-    borderWidth: 1,
-    borderColor: rivio.brand[200],
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  patientMeta: {
-    flex: 1,
+  modalContent: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: rivio.surface.card,
+    borderRadius: rivio.radius.lg,
+    padding: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  patientName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: rivio.ink[900],
-  },
-  cpfRow: {
+  modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 1,
-  },
-  cpfText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: rivio.brand[700],
-  },
-  patientDemographics: {
-    fontSize: 11,
-    color: rivio.ink[600],
-    marginTop: 1,
-  },
-  patientBadge: {
-    borderWidth: 1,
-    borderRadius: rivio.radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  patientBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  patientSummary: {
-    fontSize: 11,
-    color: rivio.ink[600],
-    lineHeight: 16,
-    marginBottom: 8,
-  },
-  patientCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: rivio.surface.subtle,
-    paddingTop: 8,
-  },
-  keyMetricWrap: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    flex: 1,
+    marginBottom: 16,
   },
-  keyMetricText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: rivio.ink[900],
-  },
-  enterButtonMini: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: rivio.brand[50],
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: rivio.radius.pill,
-  },
-  enterButtonText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: rivio.brand[700],
-  },
-  privacyFooter: {
+  modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 20,
-    maxWidth: 400,
-    paddingHorizontal: 8,
   },
-  privacyText: {
-    fontSize: 10,
-    color: rivio.ink[400],
-    lineHeight: 14,
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: rivio.ink[900],
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalList: {
+    gap: 10,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: rivio.surface.base,
+    borderWidth: 1,
+    borderColor: rivio.surface.line,
+    borderRadius: rivio.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  modalItemActive: {
+    borderColor: rivio.brand[500],
+    backgroundColor: rivio.brand[50],
+  },
+  modalItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     flex: 1,
+  },
+  modalItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: rivio.ink[900],
+  },
+  modalBadge: {
+    borderWidth: 1,
+    borderRadius: rivio.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  modalBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

@@ -168,7 +168,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     {
       id: 'msg-0',
       sender: 'assistant',
-      text: 'Olá! Sou seu assistente do Hub de Saúde Pessoal Rivio. Como posso ajudar com seu prontuário hoje?',
+      text: 'Olá! Sou seu assistente do Rivio Flow. Como posso ajudar com seu prontuário hoje?',
       timestamp: 'Hoje, 09:15',
     },
   ],
@@ -228,7 +228,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
           {
             id: `msg-welcome-${Date.now()}`,
             sender: 'assistant',
-            text: `Olá, ${resolvedPatient.name.split(' ')[0]}! Sou o assistente clínico Rivio. Seus dados de saúde e registros de wearables foram carregados diretamente do prontuário digital. Como posso te orientar hoje?`,
+            text: `Olá, ${resolvedPatient.name.split(' ')[0]}! Sou o assistente clínico do Rivio Flow. Seus dados de saúde e registros de wearables foram carregados diretamente do prontuário digital. Como posso te orientar hoje?`,
             timestamp: 'Agora',
           },
         ],

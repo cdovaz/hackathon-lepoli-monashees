@@ -3,8 +3,8 @@ import "@fontsource-variable/manrope";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Rivio · Espaço do médico",
-  description: "Contexto, evidências e acompanhamento autorizado de pacientes.",
+  title: "Rivio Flow · Espaço do médico",
+  description: "Contexto, evidências e acompanhamento autorizado de pacientes no Rivio Flow.",
   robots: { index: false, follow: false },
 };
 

@@ -1,4 +1,4 @@
-# Arquitetura do Sistema Rivio Health — "Pulso Calmo"
+# Arquitetura do Sistema Rivio Flow — "Pulso Calmo"
 
 > Especificação arquitetural completa do Hub de Saúde Pessoal (App do Paciente + Cockpit do Médico + Supabase + Pipeline de IA).  
 > Aprovada via `/grill-me` em 12/11/2026.
@@ -11,7 +11,7 @@ O sistema opera sob uma topologia **BFF Híbrida (Backend-for-Frontend)** centra
 
 ```mermaid
 flowchart TD
-    subgraph Clientes["Clientes Rivio ('Pulso Calmo')"]
+    subgraph Clientes["Clientes Rivio Flow ('Pulso Calmo')"]
         Mobile["📱 App do Paciente (Expo React Native)<br/>• Sinais Vitais & Wearables<br/>• Gerador de Token 6 Dígitos<br/>• Upload de Exames (Câmera/PDF)<br/>• Chat Copiloto IA"]
         Web["💻 Cockpit do Médico (Next.js 16 / React 19)<br/>• Entrada via CRM + Token<br/>• Briefing 30s<br/>• Evolução Cruzada (Exames vs BPM)<br/>• Grafo de Causa & Efeito (@xyflow)"]
     end
@@ -124,7 +124,7 @@ sequenceDiagram
 
 ```mermaid
 gantt
-    title Roadmap de Execução: Rivio Health Full-Stack
+    title Roadmap de Execução: Rivio Flow Full-Stack
     dateFormat  YYYY-MM-DD
     section Fase 1
     Infraestrutura Supabase & Auth           :done, f1_1, 2026-11-12, 1d

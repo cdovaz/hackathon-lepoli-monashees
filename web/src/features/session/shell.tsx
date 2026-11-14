@@ -62,9 +62,9 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="rail" aria-label="Navegação principal">
-        <Link href={ctx.base} className="brand" aria-label="Rivio, espaço do médico">
+        <Link href={ctx.base} className="brand" aria-label="Rivio Flow, espaço do médico">
           <Activity aria-hidden="true" size={28} />
-          <span>rivio<span className="brand-dot">.</span></span>
+          <span>rivio flow<span className="brand-dot">.</span></span>
         </Link>
 
         {/* Alternância de Superfície na Rail */}

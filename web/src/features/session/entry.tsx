@@ -321,7 +321,7 @@ export function Entry() {
               Acesso ao Histórico do Paciente
             </h1>
             <p className="muted" style={{ maxWidth: "520px", margin: "0 auto", fontSize: "14px" }}>
-              Solicite o <strong>token de 6 dígitos</strong> gerado no aplicativo Rivio do paciente para liberar o prontuário completo, histórico de laudos laboratoriais e evolução clínica.
+              Solicite o <strong>token de 6 dígitos</strong> gerado no aplicativo Rivio Flow do paciente para liberar o prontuário completo, histórico de laudos laboratoriais e evolução clínica.
             </p>
           </div>
 
@@ -485,7 +485,7 @@ export function Entry() {
       <div className="entry-main">
         <div style={{ marginBottom: "20px" }}>
           <span className="badge" style={{ marginBottom: "12px" }}>
-            <Stethoscope size={14} /> Portal do Médico · Rivio Clinical
+            <Stethoscope size={14} /> Portal do Médico · Rivio Flow
           </span>
           <h1 style={{ fontSize: "36px", marginBottom: "12px" }}>
             Login Médico.
