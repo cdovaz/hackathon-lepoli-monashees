@@ -406,9 +406,25 @@ export function Entry() {
                   </button>
                 </div>
               ) : (
-                <span style={{ fontSize: "12px", color: "var(--muted)", textAlign: "center" }}>
-                  Nenhum token ativo no banco. Peça ao paciente para abrir o app Rivio e gerar um novo código de 6 dígitos.
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                  <span style={{ fontSize: "12px", color: "var(--muted)", textAlign: "center" }}>
+                    Nenhum token ativo no banco. Gere um token no app móvel do paciente.
+                  </span>
+                  <a
+                    href="/patient"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: "12px",
+                      color: "#2563EB",
+                      fontWeight: "700",
+                      textDecoration: "underline",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Abrir App do Paciente (/patient) em nova aba ↗
+                  </a>
+                </div>
               )}
             </div>
 
